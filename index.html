@@ -1,0 +1,3272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>重庆轨道交通驾驶模拟器 · CRT Simulator 2026</title>
+<style>
+/* ==========================================================================
+   重庆轨道交通驾驶模拟器 · CRT SIMULATOR 2026
+   数据截至 2026 年 8 月 | Three.js r160 | 单文件应用
+   ========================================================================== */
+:root{
+  --bg:#0b0f14; --panel:rgba(14,19,26,.88); --panel2:rgba(22,30,40,.92);
+  --line:#2a3542; --txt:#dbe4ec; --dim:#8fa1b3; --acc:#ff8a00; --acc2:#ffc24b;
+  --ok:#37d67a; --warn:#ffc94d; --bad:#ff5c5c; --mono:#ff6a00;
+  --font:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:var(--font);color:var(--txt);-webkit-user-select:none;user-select:none}
+#stage{position:fixed;inset:0;z-index:0}
+#stage canvas{display:block}
+.hidden{display:none!important}
+
+/* ---------- 顶栏 ---------- */
+#topbar{position:fixed;top:0;left:0;right:0;height:54px;z-index:40;display:flex;align-items:center;gap:10px;padding:0 14px;
+  background:linear-gradient(180deg,rgba(8,12,17,.96),rgba(8,12,17,.72));border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
+#topbar .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px;letter-spacing:.5px;white-space:nowrap}
+#topbar .logo .dot{width:14px;height:14px;border-radius:4px;background:var(--acc);box-shadow:0 0 10px var(--acc)}
+#topbar .logo small{display:block;font-weight:500;font-size:10px;color:var(--dim);letter-spacing:1.5px}
+.tbtn{height:34px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--txt);
+  font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s;font-family:var(--font)}
+.tbtn:hover{border-color:var(--acc);color:var(--acc2)}
+.tbtn.active{border-color:var(--acc);background:rgba(255,138,0,.14);color:var(--acc2)}
+.tbtn .chip{width:10px;height:10px;border-radius:3px;display:inline-block}
+#topbar .spacer{flex:1}
+#clock{font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+#fps{font-size:11px;color:#556;white-space:nowrap}
+
+/* ---------- 左侧面板 ---------- */
+.panel{position:fixed;z-index:30;background:var(--panel);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.45)}
+#panelLeft{top:64px;left:12px;width:300px;bottom:190px;display:flex;flex-direction:column;overflow:hidden}
+.ptitle{display:flex;align-items:center;gap:8px;padding:10px 12px;font-weight:700;font-size:14px;border-bottom:1px solid var(--line);flex-shrink:0}
+.ptitle .bar{width:4px;height:16px;border-radius:2px;background:var(--acc)}
+#panelLeft .scroll{overflow-y:auto;flex:1;padding:8px 10px;scrollbar-width:thin;scrollbar-color:#38434f transparent}
+.sect{margin-bottom:10px}
+.sect h4{font-size:11px;color:var(--dim);letter-spacing:1px;margin:6px 0 5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:12.5px;line-height:1.65}
+.card b{color:var(--acc2)}
+.linerow{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:.12s}
+.linerow:hover{background:rgba(255,255,255,.05)}
+.linerow.sel{border-color:var(--acc);background:rgba(255,138,0,.10)}
+.linerow .chip{width:12px;height:12px;border-radius:4px;flex-shrink:0}
+.linerow .nm{font-weight:600;font-size:13px;flex:1}
+.linerow .info{font-size:10.5px;color:var(--dim)}
+select,.inp{width:100%;background:#10161d;border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:7px 8px;font-size:13px;font-family:var(--font);outline:none}
+select:focus{border-color:var(--acc)}
+.kv{display:flex;justify-content:space-between;gap:6px;font-size:12px;padding:2px 0}
+.kv span:first-child{color:var(--dim)}
+.kv span:last-child{font-variant-numeric:tabular-nums;text-align:right}
+.kv .good{color:var(--ok)} .kv .warn{color:var(--warn)} .kv .bad{color:var(--bad)}
+#timetable{font-size:11.5px;font-variant-numeric:tabular-nums}
+#timetable tr td{padding:2px 4px}
+#timetable .passed{color:#5b6a78;text-decoration:line-through}
+#timetable .now{color:var(--acc2);font-weight:700}
+#timetable .late{color:var(--bad)}
+#eventBox{background:rgba(255,60,60,.12);border:1px solid var(--bad);border-radius:9px;padding:10px;font-size:12.5px;line-height:1.6}
+#eventBox button{margin-top:8px}
+.hint{font-size:11px;color:var(--dim);line-height:1.7}
+kbd{background:#1a222c;border:1px solid #33404e;border-radius:4px;padding:1px 5px;font-size:10.5px;font-family:var(--font);color:#cfd9e2}
+
+/* ---------- 右侧面板 ---------- */
+#panelRight{top:64px;right:12px;width:262px;bottom:190px;display:flex;flex-direction:column;overflow:hidden}
+#minimap{width:100%;height:210px;background:#0a0f14;flex-shrink:0;display:block}
+#panelRight .scroll{overflow-y:auto;flex:1;padding:8px 10px;scrollbar-width:thin;scrollbar-color:#38434f transparent}
+#scoreBox .row{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;font-variant-numeric:tabular-nums}
+#scoreBox .row span:first-child{color:var(--dim)}
+.stars{color:var(--acc2);letter-spacing:2px;font-size:16px}
+#msgLog{font-size:11px;color:var(--dim);line-height:1.65;font-variant-numeric:tabular-nums}
+#msgLog .sys{color:#6d8aa5}
+#msgLog .ev{color:var(--warn)}
+#msgLog .fail{color:var(--bad)}
+
+/* ---------- 底部驾驶台 HUD ---------- */
+#cab{position:fixed;left:12px;right:12px;bottom:12px;height:172px;z-index:35;background:linear-gradient(180deg,rgba(13,18,25,.94),rgba(9,13,18,.97));
+  border:1px solid var(--line);border-radius:14px;display:flex;align-items:stretch;gap:10px;padding:10px 12px;backdrop-filter:blur(10px)}
+#speedoWrap{width:210px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative}
+#speedo{width:190px;height:150px}
+#dmiWrap{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+#dmi{flex:1;background:#0c1117;border:1px solid var(--line);border-radius:8px;display:block;min-height:0}
+#dmiRow{display:flex;gap:8px;align-items:center}
+#nextStation{font-size:21px;font-weight:800;color:var(--acc2);white-space:nowrap;letter-spacing:1px}
+#nextStation small{font-size:11px;color:var(--dim);font-weight:500;letter-spacing:0}
+#ann{font-size:12px;color:#9fb3c6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+#controls{width:300px;flex-shrink:0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-content:center}
+.cbtn{height:46px;border-radius:10px;border:1px solid var(--line);background:#141c26;color:var(--txt);font-size:12px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:.12s;font-family:var(--font)}
+.cbtn span.ic{font-size:17px;line-height:1}
+.cbtn:hover{border-color:var(--acc)}
+.cbtn:active{background:#1d2733}
+.cbtn.on{background:rgba(55,214,122,.16);border-color:var(--ok)}
+.cbtn.warnon{background:rgba(255,92,92,.2);border-color:var(--bad)}
+.cbtn.amber{background:rgba(255,138,0,.16);border-color:var(--acc)}
+#leverWrap{width:240px;flex-shrink:0;display:flex;gap:10px}
+.lever{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#10161d;border:1px solid var(--line);border-radius:10px;padding:6px 4px;cursor:ns-resize}
+.lever .lname{font-size:11px;color:var(--dim)}
+.lever .lval{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+.lever .ltrack{width:10px;height:64px;border-radius:6px;background:#0b1015;border:1px solid #232d38;position:relative;margin:3px 0}
+.lever .lfill{position:absolute;left:0;right:0;bottom:0;border-radius:5px;background:linear-gradient(180deg,var(--acc2),var(--acc));transition:height .08s}
+#leverBrake .lfill{background:linear-gradient(180deg,#ffd9a0,#ff5c5c)}
+
+/* ---------- 弹窗 ---------- */
+#modal{position:fixed;inset:0;z-index:60;background:rgba(4,7,10,.66);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#modalBox{width:min(760px,94vw);max-height:88vh;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+#modalBox .mhead{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;font-size:16px}
+#modalBox .mhead .x{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--dim);font-size:16px;cursor:pointer}
+#modalBox .mbody{padding:16px 18px;overflow-y:auto;line-height:1.75;font-size:13px;scrollbar-width:thin}
+#modalBox .mbody h3{color:var(--acc2);margin:12px 0 6px;font-size:14px}
+#modalBox .mbody table{border-collapse:collapse;width:100%;font-size:12.5px}
+#modalBox .mbody td,#modalBox .mbody th{border:1px solid #24303c;padding:6px 8px;text-align:left}
+#modalBox .mbody th{background:#121a24;color:var(--acc2)}
+#modalBox .mbody .chip{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:baseline}
+
+/* ---------- 其他 ---------- */
+#toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:70;background:rgba(255,138,0,.16);border:1px solid var(--acc);
+  color:var(--acc2);padding:9px 18px;border-radius:10px;font-size:14px;font-weight:600;pointer-events:none;opacity:0;transition:.3s;backdrop-filter:blur(6px)}
+#toast.show{opacity:1}
+#loading{position:fixed;inset:0;z-index:100;background:#0b0f14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#loading .ring{width:56px;height:56px;border:4px solid #1c2632;border-top-color:var(--acc);border-radius:50%;animation:spin 1s linear infinite}
+#loading p{color:var(--dim);font-size:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#touchZone{position:fixed;left:0;bottom:190px;width:38%;height:180px;z-index:36;display:none;flex-direction:column}
+#touchZone .trow{flex:1;display:flex}
+#touchZone button{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:15px;font-weight:700;backdrop-filter:blur(3px)}
+@media (max-width:1100px){
+  #panelLeft{width:248px}
+  #speedoWrap{width:150px}
+  #controls{width:230px}
+  #leverWrap{width:170px}
+}
+@media (pointer:coarse){
+  #touchZone{display:flex}
+  #panelLeft,#panelRight{display:none}
+  #controls{width:200px}
+  #speedoWrap{display:none}
+}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<!-- ======================= 顶栏 ======================= -->
+<div id="topbar">
+  <div class="logo"><span class="dot"></span><div>重庆轨道交通驾驶模拟器<small>CRT SIMULATOR · 数据截至 2026.08</small></div></div>
+  <button class="tbtn" id="btnLine" title="选择线路">🚇 线路</button>
+  <button class="tbtn" id="btnWeather" title="天气">🌫️ 雾</button>
+  <button class="tbtn" id="btnTime" title="时间">🌗 时间</button>
+  <button class="tbtn" id="btnCam" title="视角 (V)">🎥 视角</button>
+  <button class="tbtn" id="btnHelp" title="帮助 (?)">❓ 帮助</button>
+  <div class="spacer"></div>
+  <div id="clock">--:--:--</div>
+  <div id="fps"></div>
+</div>
+
+<!-- ======================= 左侧面板 ======================= -->
+<div id="panelLeft" class="panel">
+  <div class="ptitle"><span class="bar"></span>运行信息</div>
+  <div class="scroll">
+    <div class="sect">
+      <h4>线路概况</h4>
+      <div class="card" id="lineInfo">请选择线路</div>
+    </div>
+    <div class="sect">
+      <h4>任务设置</h4>
+      <div class="card">
+        <div style="margin-bottom:6px"><span style="color:var(--dim)">始发站</span></div>
+        <select id="selStart"></select>
+        <div style="margin:8px 0 6px"><span style="color:var(--dim)">运行方向</span></div>
+        <select id="selDir"></select>
+        <div style="margin:8px 0 6px"><span style="color:var(--dim)">终点站（默认线路终点）</span></div>
+        <select id="selEnd"></select>
+        <div style="margin:8px 0 6px"><span style="color:var(--dim)">驾驶模式</span></div>
+        <select id="selMode">
+          <option value="ato">ATO 自动驾驶（推荐新手）</option>
+          <option value="manual">人工驾驶 ATP 防护</option>
+        </select>
+        <div style="margin:8px 0 6px"><span style="color:var(--dim)">场景</span></div>
+        <select id="selScene">
+          <option value="normal">正常运营 · 平峰</option>
+          <option value="rush">早高峰 · 大客流</option>
+          <option value="night">夜间运营</option>
+          <option value="drill">故障演练（随机事件）</option>
+        </select>
+        <button class="tbtn" id="btnGo" style="width:100%;margin-top:10px;justify-content:center;height:38px;background:var(--acc);border-color:var(--acc);color:#111;font-weight:800">▶ 发车 · 开始值乘</button>
+      </div>
+    </div>
+    <div class="sect">
+      <h4>时刻表 / 正点率</h4>
+      <div class="card" style="max-height:170px;overflow-y:auto"><table id="timetable" style="width:100%"></table></div>
+    </div>
+    <div class="sect" id="eventSect"></div>
+    <div class="sect">
+      <h4>键盘 / 触屏操作</h4>
+      <div class="card hint">
+        <kbd>W</kbd>/<kbd>↑</kbd> 牵引 +　<kbd>S</kbd>/<kbd>↓</kbd> 制动 +<br>
+        <kbd>Q</kbd>/<kbd>E</kbd> 左/右门　<kbd>A</kbd>/<kbd>D</kbd> 手柄回零<br>
+        <kbd>Space</kbd> 紧急制动　<kbd>C</kbd> ATO 切换<br>
+        <kbd>H</kbd> 鸣笛(按住)　<kbd>L</kbd> 车灯　<kbd>V</kbd> 视角<br>
+        <kbd>1</kbd> 晴 <kbd>2</kbd> 雾 <kbd>3</kbd> 雨　<kbd>T</kbd> 时间<br>
+        <kbd>P</kbd> 暂停　<kbd>M</kbd> 小地图　<kbd>F</kbd> 全屏
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= 右侧面板 ======================= -->
+<div id="panelRight" class="panel">
+  <div class="ptitle"><span class="bar"></span>线路图 / 监控</div>
+  <canvas id="minimap" width="262" height="210"></canvas>
+  <div class="scroll">
+    <div class="sect">
+      <h4>值乘评分</h4>
+      <div class="card" id="scoreBox">
+        <div class="row"><span>停站精度</span><span id="scAcc">—</span></div>
+        <div class="row"><span>平稳度（冲动）</span><span id="scSmooth">—</span></div>
+        <div class="row"><span>准点率</span><span id="scPunct">—</span></div>
+        <div class="row"><span>驾驶规范</span><span id="scRule">—</span></div>
+        <div class="row"><span style="color:var(--acc2);font-weight:700">综合评分</span><span id="scTotal">—</span></div>
+        <div class="stars" id="scStars">☆☆☆☆☆</div>
+      </div>
+    </div>
+    <div class="sect">
+      <h4>列车状态</h4>
+      <div class="card">
+        <div class="kv"><span>车次</span><span id="stTrain">—</span></div>
+        <div class="kv"><span>速度</span><span id="stSpeed">0 km/h</span></div>
+        <div class="kv"><span>里程</span><span id="stDist">0.00 km</span></div>
+        <div class="kv"><span>坡道</span><span id="stGrade">0 ‰</span></div>
+        <div class="kv"><span>牵引/制动</span><span id="stTE">情行</span></div>
+        <div class="kv"><span>限速</span><span id="stLimit">—</span></div>
+        <div class="kv"><span>能耗</span><span id="stEnergy">0.0 kWh</span></div>
+        <div class="kv"><span>再生率</span><span id="stRegen">0 %</span></div>
+        <div class="kv"><span>载客</span><span id="stPax">0 人</span></div>
+        <div class="kv"><span>信号</span><span id="stSignal">—</span></div>
+        <div class="kv"><span>车门</span><span id="stDoors">关闭</span></div>
+      </div>
+    </div>
+    <div class="sect">
+      <h4>运行记录</h4>
+      <div class="card" id="msgLog" style="max-height:150px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= 驾驶台 HUD ======================= -->
+<div id="cab">
+  <div id="speedoWrap"><canvas id="speedo" width="190" height="150"></canvas></div>
+  <div id="dmiWrap">
+    <div id="dmiRow">
+      <div id="nextStation">— <small></small></div>
+      <div id="ann">欢迎乘坐重庆轨道交通</div>
+    </div>
+    <canvas id="dmi" width="640" height="96"></canvas>
+  </div>
+  <div id="controls">
+    <button class="cbtn" id="btnDoorL" title="左侧车门 (Q)"><span class="ic">◀🚪</span>左门</button>
+    <button class="cbtn" id="btnDoorR" title="右侧车门 (R)"><span class="ic">🚪▶</span>右门</button>
+    <button class="cbtn" id="btnATO" title="ATO/人工 (C)"><span class="ic">🤖</span>ATO</button>
+    <button class="cbtn amber" id="btnEB" title="紧急制动 (Space)"><span class="ic">⛔</span>急制</button>
+    <button class="cbtn" id="btnHorn" title="鸣笛 (按住 H)"><span class="ic">📯</span>鸣笛</button>
+    <button class="cbtn" id="btnLight" title="车灯 (L)"><span class="ic">💡</span>车灯</button>
+    <button class="cbtn" id="btnWiper" title="雨刷"><span class="ic">🌧️</span>雨刷</button>
+    <button class="cbtn" id="btnPause" title="暂停 (P)"><span class="ic">⏸</span>暂停</button>
+  </div>
+  <div id="leverWrap">
+    <div class="lever" id="leverTrac"><div class="lname">牵引</div><div class="lval" id="lvalTrac">P0</div><div class="ltrack"><div class="lfill" id="lfillTrac" style="height:0%"></div></div></div>
+    <div class="lever" id="leverBrake"><div class="lname">制动</div><div class="lval" id="lvalBrake">B0</div><div class="ltrack"><div class="lfill" id="lfillBrake" style="height:0%"></div></div></div>
+  </div>
+</div>
+
+<!-- ======================= 触屏按钮 ======================= -->
+<div id="touchZone">
+  <div class="trow"><button id="tTrac">▲ 牵引+</button><button id="tBrake">▼ 制动+</button></div>
+  <div class="trow"><button id="tDoor">◀ 左门 ▶</button><button id="tEB">⛔ 急制</button></div>
+</div>
+
+<div id="modal" class="hidden"><div id="modalBox"><div class="mhead"><span id="modalTitle">—</span><button class="x" id="modalClose">✕</button></div><div class="mbody" id="modalBody"></div></div></div>
+<div id="toast"></div>
+<div id="loading"><div class="ring"></div><p>正在加载 3D 引擎与重庆轨道交通数据（2026.08）…</p></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+/* ==========================================================================
+ * 重庆轨道交通驾驶模拟器 · CRT SIMULATOR 2026
+ * 数据截至 2026 年 8 月（重庆轨道交通全网 14 条线路 / 320+ 车站）
+ * 坐标：本地示意坐标系，1 单位 = 10 米；x 向东，z 向南，y 向上（高程）
+ * ========================================================================== */
+'use strict';
+
+/* ---------- 全局工具 ---------- */
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => t * t * (3 - 2 * t);
+const dist2 = (ax, az, bx, bz) => { const dx = ax - bx, dz = az - bz; return dx * dx + dz * dz; };
+const fmt = (v, d = 1) => v.toFixed(d);
+const pad2 = n => String(n).padStart(2, '0');
+function fmtClock(t) {  // t: 秒
+  const h = Math.floor(t / 3600) % 24, m = Math.floor(t / 60) % 60, s = Math.floor(t % 60);
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+}
+function hash2(x, z, seed = 1) {  // 确定性 2D 噪声 [-1,1]
+  let h = Math.sin(x * 127.1 + z * 311.7 + seed * 74.7) * 43758.5453;
+  h -= Math.floor(h);
+  return h * 2 - 1;
+}
+function noise2(x, z) {  // 双线性平滑噪声
+  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz;
+  const sx = smooth(fx), sz = smooth(fz);
+  const a = hash2(ix, iz), b = hash2(ix + 1, iz), c = hash2(ix, iz + 1), d = hash2(ix + 1, iz + 1);
+  return lerp(lerp(a, b, sx), lerp(c, d, sx), sz);
+}
+
+/* ==========================================================================
+ * 一、线路数据（截至 2026.08 运营线路）
+ * stations 字符串：站名:x:z|站名:x:z|… 按线路里程顺序
+ * ========================================================================== */
+const NETWORK = {
+  asOf: '2026-08',
+  km: 579, stations: 327, lines: 14,
+  dailyAvg: '约 700 万人次/日', record: '单日最高客流突破 1000 万人次（2025 年）',
+  first: '2 号线（2004-12-28，中国西部首条城市轨道交通）',
+  underConstruction: '在建：15 号线一期、27 号线（均计划 2026 年底开通）、7 号线一期、17 号线一期、24 号线一期、18 号线北延伸段、江跳线过江段；规划：8 号线、26 号线等。',
+  fare: '按里程计价 2～10 元；使用交通卡 1 小时内换乘可享受优惠；支持手机扫码乘车。',
+  opsHours: '全网大致运营时段 6:30～23:00（各线略有差异）',
+};
+
+const LINES = [
+  { id: 'L1', name: '1 号线', short: '1号线', color: '#D32011', colorName: '石榴红', type: 'steel', stock: 'B 型车 · 6 节编组', vmax: 100,
+    opened: '2011-07-28', km: '45.3', loops: false,
+    fact: '重庆首条地铁，贯穿渝中、沙坪坝、大学城，直达璧山。',
+    stations: '朝天门:0:0|小什字:-25:60|较场口:-80:180|七星岗:-170:290|两路口:-330:390|鹅岭:-440:430|大坪:-590:440|石油路:-680:430|歇台子:-770:420|石桥铺:-870:410|高庙村:-960:400|马家岩:-1050:390|小龙坎:-1150:380|沙坪坝:-1250:370|杨公桥:-1360:355|烈士墓:-1470:340|磁器口:-1600:240|石井坡:-1680:280|双碑:-1760:320|赖家桥:-1900:290|微电园:-2080:260|陈家桥:-2260:230|大学城:-2440:200|尖顶坡:-2620:170|璧山:-2850:140' },
+  { id: 'L2', name: '2 号线', short: '2号线', color: '#00843D', colorName: '森林绿', type: 'mono', stock: '跨座式单轨 · 8 节编组', vmax: 75,
+    opened: '2004-12-28', km: '31.4', loops: false,
+    fact: '中国西部第一条城市轨道交通；李子坝站“列车穿楼”全国闻名，沿嘉陵江而行，被誉为“开往春天的列车”。',
+    stations: '较场口:-80:180|临江门:-45:105|黄花园:-70:-10|大溪沟:-140:-30|曾家岩:-200:-40|牛角沱:-300:60|李子坝:-420:70|佛图关:-510:200|大坪:-590:440|袁家岗:-660:510|谢家湾:-770:580|杨家坪:-850:640|动物园:-930:690|大堰村:-1010:730|马王场:-1090:760|平安:-1170:790|大渡口:-1260:810|新山村:-1350:830|天堂堡:-1440:850|建桥:-1530:870|金家湾:-1600:890|刘家坝:-1690:890|白居寺:-1760:870|大江:-1790:890|鱼洞:-1500:1100' },
+  { id: 'L3', name: '3 号线', short: '3号线', color: '#003DA5', colorName: '琉璃蓝', type: 'mono', stock: '跨座式单轨 · 8 节编组', vmax: 75,
+    opened: '2011-09-29', km: '56.1', loops: false,
+    fact: '全球最长的跨座式单轨线路；铜元局—两路口区间最大坡道达 45‰，为全国之最。',
+    stations: '鱼洞:-1500:1100|金竹:-1380:1030|鱼胡路:-1250:970|学堂湾:-1120:920|大山村:-990:880|花溪:-860:850|岔路口:-730:830|九公里:-600:810|麒龙:-470:800|八公里:-340:790|重庆交通大学:-220:780|六公里:-100:770|重庆工商大学:10:760|四公里:180:620|南坪:90:540|工贸:20:480|铜元局:-40:460|两路口:-330:390|牛角沱:-300:60|华新街:-320:-60|观音桥:-380:-130|红旗河沟:-430:-230|嘉州路:-470:-300|郑家院子:-530:-320|唐家院子:-590:-320|狮子坪:-650:-320|重庆北站南广场:-710:-340|龙头寺:-770:-380|童家院子:-840:-380|金渝:-910:-360|金童路:-970:-300|鸳鸯:-1030:-240|园博园:-1090:-170|翠云:-1160:-140|长福路:-1230:-130|回兴:-1310:-150|双龙:-1390:-180|碧津:-1470:-210|江北机场T2航站楼:-1460:-260' },
+  { id: 'L4', name: '4 号线', short: '4号线', color: '#F5821F', colorName: '太阳橙', type: 'steel', stock: 'As 型车 · 6 节编组', vmax: 100,
+    opened: '2018-12-28', km: '60.4', loops: false,
+    fact: '横贯江北、渝北，直抵龙兴、石船；西延伸段 2025 年底建成，全线贯通运营。',
+    stations: '石马河立交:-980:170|玉带山:-1010:210|盘溪:-900:170|大石坝:-650:120|大庆村:-590:80|花卉园:-560:-60|龙溪:-500:-140|嘉州路:-470:-300|民安大道:-570:-120|重庆北站北广场:-560:-430|头塘:-350:-500|保税港:-240:-480|寸滩:-170:-510|黑石子:-90:-530|港城:-10:-550|太平冲:70:-570|唐家沱:150:-590|铁山坪:230:-610|鹿栖:310:-620|果园物流枢纽:390:-620|鱼嘴:470:-610|雁坪:550:-600|石河清:630:-590|复盛:710:-580|三板溪:790:-570|龙驿大道:870:-560|龙兴:950:-550|高石塔:1030:-540|普福:1110:-530|桐梓林:1190:-520|石船:1270:-510|黄岭:1350:-500' },
+  { id: 'L5', name: '5 号线', short: '5号线', color: '#00A5E3', colorName: '浅葱蓝', type: 'steel', stock: 'As 型车 · 6 节编组', vmax: 100,
+    opened: '2017-12-28', km: '48.7', loops: false,
+    fact: '南北大动脉，跨嘉陵江红岩村大桥；2023 年南北贯通运营。',
+    stations: '悦港北路:-900:-1300|悦港大道:-950:-1220|椿萱大道:-990:-1150|中央公园西:-1030:-930|鲁家沟:-1050:-850|甘悦大道:-1000:-780|玉河沟:-950:-710|园博中心:-900:-640|丹鹤:-850:-580|湖霞街:-800:-530|重光:-760:-480|和睦路:-720:-430|人和:-680:-380|幸福广场:-640:-330|冉家坝:-750:-60|大龙山:-680:20|大石坝:-650:120|忠恕沱:-600:60|红岩村:-620:280|歇台子:-770:420|石桥铺:-870:410|石新路:-940:410|巴山:-1010:410|凤西路:-1080:410|重庆西站:-1180:405|华岩寺:-1260:410|华成路:-1340:420|半山:-1420:430|中梁山:-1500:440|金建路:-1580:450|华岩中心:-1660:460|跳磴:-1750:480' },
+  { id: 'L6', name: '6 号线', short: '6号线', color: '#E4007F', colorName: '谦粉红', type: 'steel', stock: 'B 型车 · 6 节编组', vmax: 100,
+    opened: '2012-09-28', km: '63.3', loops: false,
+    fact: '连接北碚与茶园；东延伸段（重庆东站段）2025 年 6 月开通，全线 31 座车站。',
+    stations: '北碚:-2260:-720|西南大学:-2140:-680|状元碑:-2020:-640|龙凤溪:-1940:-620|向家岗:-1860:-600|蔡家:-1780:-580|曹家湾:-1700:-530|金山寺:-1620:-480|礼嘉:-1080:-400|九曲河:-1000:-330|康庄:-940:-260|大竹林:-880:-220|光电园:-830:-190|冉家坝:-750:-60|大龙山:-680:20|花卉园:-560:-60|红旗河沟:-430:-230|黄泥塝:-320:-330|红土地:-180:-430|五里店:-40:-500|江北城:-80:-340|大剧院:-60:-200|小什字:-25:60|上新街:250:150|刘家坪:420:470|百乐园:600:550|桃花桥:780:620|重庆东站:960:660|长生桥:1090:640|邱家湾:1240:620|茶园:1400:600' },
+  { id: 'L9', name: '9 号线', short: '9号线', color: '#5C2D91', colorName: '品紫', type: 'steel', stock: 'As 型车 · 6 节编组', vmax: 100,
+    opened: '2022-01-25', km: '39.8', loops: false,
+    fact: '横贯渝中、江北、渝北；化龙桥站再现“地铁穿楼”景观。',
+    stations: '高滩岩:-1080:320|天梨路:-1160:330|沙坪坝:-1250:370|小龙坎:-1150:380|土湾:-850:360|红岩村:-620:280|富华路:-660:300|化龙桥:-700:240|李家坪:-550:40|蚂蝗梁:-480:-60|观音桥:-380:-130|鲤鱼池:-300:-280|刘家台:-200:-330|江北城:-80:-340|五里店:-40:-500|溉澜溪:-100:-560|头塘:-350:-500|保税港:-240:-480|何家梁:-350:-520|石盘河:-500:-540|上湾路:-750:-560|青岗坪:-700:-660|宝圣湖:-800:-740|兴科大道:-850:-780|春华大道:-880:-830|兰桂大道:-910:-870|中央公园东:-950:-900|丛岩寺:-1030:-940|花石沟:-1130:-980' },
+  { id: 'L10', name: '10 号线', short: '10号线', color: '#7B2FBE', colorName: '紫藤', type: 'steel', stock: 'As 型车 · 6 节编组', vmax: 100,
+    opened: '2017-12-28', km: '43.3', loops: false,
+    fact: '机场快线；跨长江南纪门轨道专用桥，二期 2023 年 11 月全线贯通。',
+    stations: '兰花路:-80:780|南湖:90:700|万寿路:20:620|后堡:-40:520|七星岗:-170:290|大礼堂:-230:220|曾家岩:-200:-40|鲤鱼池:-300:-280|红土地:-180:-430|龙头寺公园:-450:-330|重庆北站南广场:-710:-340|重庆北站北广场:-560:-430|民心佳园:-800:-450|三亚湾:-900:-500|上湾路:-750:-560|环山公园:-600:-620|长河:-950:-560|江北机场T3航站楼:-1250:-350|江北机场T2航站楼:-1460:-260|渝北广场:-1400:-370|鹿山:-1180:-600|中央公园东:-950:-900|中央公园:-980:-950|中央公园西:-1030:-930|悦来:-1120:-1080|王家庄:-1220:-1150' },
+  { id: 'L18', name: '18 号线', short: '18号线', color: '#29D2C9', colorName: '青绿', type: 'steel', stock: 'As 型车 · 6 节编组', vmax: 100,
+    opened: '2023-12-28', km: '29.0', loops: false,
+    fact: '2023 年 12 月开通；跨白居寺长江大桥，富华路至跳磴南全程约 46 分钟。',
+    stations: '富华路:-660:300|歇台子:-770:420|奥体中心:-870:470|石坪桥:-930:550|杨家坪:-850:640|滩子口:-900:720|黄桷坪:-950:790|四川美术学院:-1000:850|电厂:-1060:890|李家沱大桥:-1130:930|重庆理工大学:-1200:960|花溪工业园:-1270:980|巴滨路湿地公园:-1350:1150|茄子溪:-1500:950|白居寺:-1760:870|伏牛溪:-1850:860|金鳌山:-1830:700|跳磴:-1750:480|跳磴南:-1680:440' },
+  { id: 'LOOP', name: '环线', short: '环线', color: '#FFC10E', colorName: '柠檬黄', type: 'steel', stock: 'As 型车 · 6 节编组', vmax: 100,
+    opened: '2018-12-28', km: '50.9', loops: true,
+    fact: '全国唯一的全自动闭环环线；鹅公岩轨道专用桥跨长江，50.9 公里 33 座车站。',
+    stations: '重庆图书馆:-1410:440|天星桥:-1360:400|沙坪坝:-1250:370|重庆大学:-1130:330|玉带山:-1010:210|南桥寺:-930:120|体育公园:-840:60|冉家坝:-750:-60|动步公园:-680:-90|洪湖东路:-610:-110|民安大道:-570:-120|重庆北站南广场:-710:-340|渝鲁:-400:-470|五里店:-40:-500|弹子石:180:-150|涂山:260:-80|仁济:330:-20|上新街:250:150|上浩:320:260|海棠溪:370:380|罗家坝:380:500|四公里:180:620|南湖:90:700|海峡路:-120:800|谢家湾:-770:580|奥体中心:-870:470|陈家坪:-950:440|彩云湖:-1030:430|二郎:-1100:420|华龙:-1160:410|重庆西站:-1180:405|上桥:-1260:420|凤鸣山:-1340:430|重庆图书馆:-1410:440' },
+  { id: 'EXPO', name: '国博线', short: '国博线', color: '#E4007F', colorName: '谦粉红(6号线支线)', type: 'steel', stock: 'B 型车 · 6 节编组', vmax: 100,
+    opened: '2013-05-15', km: '26.6', loops: false,
+    fact: '6 号线支线，服务悦来国博中心与水土、复兴片区。',
+    stations: '礼嘉:-1080:-400|欢乐谷:-1160:-480|黄茅坪:-1250:-550|高义口:-1330:-620|国博中心:-1400:-700|悦来:-1120:-1080|王家庄:-1220:-1150|清溪河:-1300:-1200|刘家院子:-1380:-1240|思源:-1470:-1280|复兴:-1560:-1310|红岩坪:-1650:-1340|沙河坝:-1740:-1370' },
+  { id: 'KG', name: '空港线', short: '空港线', color: '#003DA5', colorName: '琉璃蓝(3号线支线)', type: 'mono', stock: '跨座式单轨 · 6 节编组', vmax: 75,
+    opened: '2016-12-28', km: '11.0', loops: false,
+    fact: '3 号线北延伸段（碧津—举人坝），服务空港工业园区。',
+    stations: '碧津:-1470:-210|双凤桥:-1470:-320|空港广场:-1470:-430|高堡湖:-1480:-540|观月路:-1500:-650|莲花:-1530:-760|举人坝:-1560:-870' },
+  { id: 'JT', name: '江跳线', short: '江跳线', color: '#E6550D', colorName: '江跳橙', type: 'steel', stock: '双流制 As 型车 · 6 节编组', vmax: 120,
+    opened: '2022-08-06', km: '26.3', loops: false,
+    fact: '全国首条双流制（AC 25kV / DC 1500V）市域铁路，直通江津。',
+    stations: '跳磴:-1750:480|石林寺:-1820:530|九龙园:-1890:580|双福:-1970:630|享堂:-2060:690|江津高铁:-2150:750|圣泉寺:-2250:810' },
+  { id: 'BT', name: '璧铜线', short: '璧铜线', color: '#A05A2C', colorName: '铜棕', type: 'steel', stock: '市域列车 · 4 节编组', vmax: 140,
+    opened: '2025-01-02', km: '37.5', loops: false,
+    fact: '2025 年 1 月开通的市域铁路，璧山至铜梁西，设计时速 140 km/h。',
+    stations: '璧山:-2850:140|璧城:-2960:190|河边:-3070:240|大路:-3180:290|庆隆:-3290:340|科创新城:-3400:390|铜梁龙城天街:-3510:440|铜梁西:-3620:490' },
+];
+
+/* ---------- 江河（长江 / 嘉陵江）示意走向 ---------- */
+const RIVERS = [
+  { name: '长江', pts: [[-3600, 1900], [-2800, 1600], [-2200, 1500], [-1600, 1250], [-1450, 1000], [-1200, 800], [-900, 700], [-650, 620], [-450, 560], [-350, 500], [-250, 460], [-150, 430], [-60, 250], [0, 0], [150, -200], [420, -330], [800, -420], [1400, -500], [2200, -560]], width: 26 },
+  { name: '嘉陵江', pts: [[-1800, -1300], [-1570, -700], [-1580, 0], [-1600, 150], [-1400, 280], [-1150, 310], [-900, 280], [-700, 200], [-500, 100], [-380, 40], [-280, -10], [-180, -50], [-90, -50], [0, 0]], width: 16 },
+];
+const RIVER_Y = -8;      // 江面高程
+const BRIDGE_Y = 2.2;    // 跨江桥桥面高程
+
+/* ---------- 车辆动力学参数 ---------- */
+const STOCK_PARAMS = {
+  mono:   { mass: 220, aMax: 0.95, brakeSvc: 1.0, brakeEB: 1.25, jerk: 0.75, jerkEB: 1.4, davis: [2.0, 0.028, 0.00048], label: '跨座式单轨', supply: 'DC 1500V 侧向受流', cars: 8, carLen: 14.6, carW: 2.98, carH: 3.7, floor: 1.6, power: 3800 },
+  B:      { mass: 205, aMax: 1.0,  brakeSvc: 1.0, brakeEB: 1.3,  jerk: 0.75, jerkEB: 1.4, davis: [1.7, 0.024, 0.00042], label: 'B 型地铁', supply: 'DC 1500V 架空接触网', cars: 6, carLen: 19.5, carW: 2.8, carH: 3.8, floor: 1.55, power: 4200 },
+  As:     { mass: 210, aMax: 1.0,  brakeSvc: 1.0, brakeEB: 1.3,  jerk: 0.75, jerkEB: 1.4, davis: [1.7, 0.024, 0.00042], label: 'As 型山地地铁', supply: 'DC 1500V 架空接触网', cars: 6, carLen: 20.0, carW: 3.0, carH: 3.8, floor: 1.55, power: 4400 },
+  city:   { mass: 180, aMax: 0.85, brakeSvc: 1.0, brakeEB: 1.2,  jerk: 0.7,  jerkEB: 1.2, davis: [1.5, 0.02, 0.00038], label: '市域快线列车', supply: 'AC 25kV 架空接触网', cars: 4, carLen: 24.0, carW: 3.2, carH: 3.9, floor: 1.6, power: 5600 },
+};
+const STOCK_BY_TYPE = { mono: 'mono', B: 'B', As: 'As' };
+
+/* ---------- 车站特色注记（到达时显示 / 播报） ---------- */
+const STATION_NOTES = {
+  '李子坝': '列车穿楼 · 全网唯一', '铜元局': '全国最大坡道 45‰', '红土地': '全国最深站之一（约 94 米）',
+  '朝天门': '两江交汇 · 来福士广场', '磁器口': '千年古镇 · 嘉陵江畔', '大剧院': '洪崖洞 · 两江夜景',
+  '曾家岩': '曾家岩嘉陵江大桥', '牛角沱': '嘉陵江轨道专用桥', '上新街': '东水门长江大桥',
+  '大礼堂': '重庆人民大礼堂', '观音桥': '北城天街商圈', '大学城': '重庆大学城',
+  '江北机场T2航站楼': '江北国际机场 T2', '江北机场T3航站楼': '江北国际机场 T3', '重庆东站': '全国在建最大高铁枢纽',
+  '沙坪坝': '高铁沙坪坝站 · 商圈', '重庆西站': '重庆西站高铁枢纽', '重庆北站南广场': '重庆北站',
+  '动物园': '重庆动物园', '国博中心': '重庆国际博览中心', '两路口': '皇冠大扶梯 · 文化宫',
+  '小什字': '解放碑 · 洪崖洞方向', '较场口': '十八梯 · 解放碑', '鹅岭': '鹅岭公园 · 二厂文创园',
+  '佛图关': '佛图关公园 · 悬崖步道', '化龙桥': '地铁穿楼 · 企业天地', '五里店': '朝天门长江大桥',
+  '白居寺': '白居寺长江大桥', '茄子溪': '白居寺长江大桥北岸', '谢家湾': '鹅公岩长江大桥',
+  '七星岗': '通远门古城墙', '南坪': '南坪商圈', '华新街': '嘉陵江大桥',
+};
+
+/* ---------- 播报文案模板（仿真实运营广播） ---------- */
+const ANNOUNCE = {
+  welcome: (l, dir) => `欢迎乘坐重庆轨道交通${l}。本次列车开往${dir}方向。`,
+  next: (n, note) => `列车运行前方到站：${n}站。${note ? '此站可到达：' + note.replace(/·.*/, '') + '。' : ''}请乘客提前做好下车准备。`,
+  arrive: (n, side) => `${n}站到了。请要下车的乘客从列车运行方向${side}侧车门下车，先下后上，注意站台与列车之间的空隙。`,
+  doorsClose: '车门即将关闭，请乘客注意安全，不要抢上抢下。',
+  depart: n => `列车即将从${n}站开出，请乘客站稳扶好。`,
+  terminal: (n, l) => `本次列车终点站${n}到了。请全体乘客带好随身物品下车。感谢您乘坐重庆轨道交通${l}，祝您出行愉快。`,
+  eb: '紧急制动！请乘客扶稳站好，注意安全。',
+  fault: '各位乘客，因信号设备故障，本次列车将限速运行，由此给您带来的不便，敬请谅解。',
+  medical: '各位乘客，本次列车有乘客需要医疗帮助，列车将在前方站停车等待。请乘客们保持车厢畅通。',
+};
+
+/* ---------- 全局运行配置 ---------- */
+const CFG = {
+  simSpeed: 1,
+  fogDensity: { clear: 0.00030, fog: 0.00135, rain: 0.00110 },
+  quality: 'high',
+  annVoice: true,
+  soundVol: 0.8,
+  autoHorn: true,          // 出站自动鸣笛
+  atoDefault: true,
+};
+const VIEW_NAMES = ['司机室', '车头外视', '车尾外视', '路旁视角', '无人机视角', '车厢内'];
+
+/* ==========================================================================
+ * 二、音频引擎（WebAudio 全程序化合成：牵引变流、轮轨、制动、喇叭、广播）
+ * ========================================================================== */
+class SoundEngine {
+  constructor() {
+    this.ctx = null; this.master = null; this.gains = {}; this.noiseBuf = null;
+    this.hornOn = false; this.wiperOn = false; this._lastUi = 0;
+  }
+  init() {  // 必须在用户手势后调用
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.ctx = ctx;
+    this.master = ctx.createGain();
+    this.master.gain.value = CFG.soundVol;
+    this.master.connect(ctx.destination);
+    // 噪声源（滚动 / 制动 / 雨共用）
+    const len = ctx.sampleRate * 2;
+    this.noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = this.noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const mk = name => {
+      const g = ctx.createGain(); g.gain.value = 0; g.connect(this.master); this.gains[name] = g; return g;
+    };
+    // --- 牵引变流器：锯齿波 + PWM 方波，频率随速度 ---
+    {
+      const g = mk('motor');
+      this.osc1 = ctx.createOscillator(); this.osc1.type = 'sawtooth';
+      this.osc2 = ctx.createOscillator(); this.osc2.type = 'square';
+      this.osc2.detune.value = 14;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 2.2;
+      const lp2 = ctx.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 700; lp2.Q.value = 1.5;
+      this.osc1.connect(lp); this.osc2.connect(lp2); lp.connect(g); lp2.connect(g);
+      this.osc1.start(); this.osc2.start();
+      this.motorLP = lp;
+    }
+    // --- 轮轨 / 走行噪声 ---
+    {
+      const g = mk('roll');
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 320; bp.Q.value = 0.6;
+      src.connect(bp); bp.connect(g); src.start();
+      this.rollBP = bp;
+    }
+    // --- 制动气噪声 ---
+    {
+      const g = mk('brake');
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+      src.connect(hp); hp.connect(g); src.start();
+    }
+    // --- 雨声 ---
+    {
+      const g = mk('rain');
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 620;
+      src.connect(lp); lp.connect(g); src.start();
+      this.rainLP = lp;
+    }
+    this.gains.horn = mk('horn'); this.gains.chime = mk('chime'); this.gains.ui = mk('ui');
+    // 喇叭：双音
+    this.hornGain = ctx.createGain(); this.hornGain.gain.value = 0;
+    this.hornGain.connect(this.gains.horn);
+    [440, 554].forEach(f => {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 1.02;
+      const og = ctx.createGain(); og.gain.value = 0.35;
+      o.connect(og); o2.connect(og); og.connect(this.hornGain); o.start(); o2.start();
+    });
+    this.hornOscFreq = 440;
+    this.setVolume(CFG.soundVol);
+  }
+  setVolume(v) { CFG.soundVol = v; if (this.master) this.master.gain.value = v; }
+  tone(freq, dur, gain = 0.3, type = 'sine', when = 0) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime + when;
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.gains.chime); o.start(t); o.stop(t + dur + 0.05);
+  }
+  doorChime(kind = 'close') {  // 关门提示音：叮-咚 + 嘟嘟嘟
+    if (!this.ctx) return;
+    if (kind === 'close') {
+      this.tone(880, 0.22, 0.28); this.tone(660, 0.26, 0.28, 'sine', 0.22);
+      for (let i = 0; i < 3; i++) this.tone(980, 0.12, 0.2, 'square', 0.7 + i * 0.16);
+    } else {
+      this.tone(660, 0.22, 0.28); this.tone(880, 0.26, 0.28, 'sine', 0.22);
+    }
+  }
+  click() { if (this.ctx) this.tone(1200, 0.04, 0.08, 'square'); }
+  beep(freq = 1600, dur = 0.09) { if (this.ctx) this.tone(freq, dur, 0.16, 'square'); }
+  setHorn(on) {
+    if (!this.ctx) return;
+    this.hornOn = on;
+    const t = this.ctx.currentTime;
+    this.hornGain.gain.cancelScheduledValues(t);
+    this.hornGain.gain.setTargetAtTime(on ? 0.5 : 0.0001, t, on ? 0.03 : 0.05);
+  }
+  uiPing() { const n = Date.now(); if (n - this._lastUi > 120) { this._lastUi = n; this.click(); } }
+  /* 每帧更新连续音 */
+  update(v, a, braking, eb, rainAmt, pausing) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime, s = pausing ? 0 : 1;
+    const vms = Math.abs(v);
+    // 变流器：频率随速度扫频（0→180Hz 基波感）
+    const f = 60 + vms * 7 + Math.max(0, a) * 46;
+    this.osc1.frequency.setTargetAtTime(f, t, 0.08);
+    this.osc2.frequency.setTargetAtTime(f * 2.05, t, 0.08);
+    this.motorLP.frequency.setTargetAtTime(500 + vms * 34 + a * 120, t, 0.1);
+    this.gains.motor.gain.setTargetAtTime(s * clamp(0.055 + Math.abs(a) * 0.30 + vms * 0.0022, 0, 0.5), t, 0.12);
+    // 轮轨噪声
+    this.rollBP.frequency.setTargetAtTime(240 + vms * 9, t, 0.1);
+    this.gains.roll.gain.setTargetAtTime(s * clamp(0.012 + vms * vms * 0.000052, 0, 0.4), t, 0.15);
+    // 制动
+    const bGain = eb ? 0.34 : braking ? clamp(Math.abs(a) * 0.3, 0, 0.26) : 0;
+    this.gains.brake.gain.setTargetAtTime(s * bGain, t, 0.1);
+    // 雨
+    this.gains.rain.gain.setTargetAtTime(s * clamp(rainAmt, 0, 0.32), t, 0.3);
+  }
+}
+
+/* ---------- 语音广播（Web Speech API，中文） ---------- */
+class Announcer {
+  constructor() { this.enabled = CFG.annVoice; this._pick(); }
+  _pick() {
+    try {
+      const vs = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+      this.voice = vs.find(x => /zh[-_]CN/i.test(x.lang)) || vs.find(x => /zh/i.test(x.lang)) || null;
+    } catch (e) { this.voice = null; }
+  }
+  setEnabled(b) { this.enabled = b; }
+  speak(text, interrupt = true) {
+    if (!this.enabled || !window.speechSynthesis) return;
+    try {
+      if (interrupt) speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-CN'; u.rate = 0.96; u.pitch = 1.0; u.volume = 0.95;
+      if (this.voice) u.voice = this.voice;
+      speechSynthesis.speak(u);
+    } catch (e) { /* 忽略 */ }
+  }
+}
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => AUD && ANN && ANN._pick();
+
+/* ==========================================================================
+ * 三、三维世界引擎（Three.js）
+ * 地形 → 江河 → 线路(样条/坡道/限速) → 轨道/桥梁 → 车站/建筑/列车
+ * ========================================================================== */
+const U10 = 10;               // 1 单位 = 10 米
+const SAMPLE_STEP = 0.55;     // 样条采样步长（单位，≈5.5 米）
+
+class World {
+  constructor(three, line, opts = {}) {
+    this.T = three;
+    this.line = line;
+    this.opts = opts;
+    this.group = new three.Group();
+    this.group.name = 'world';
+    this.track = null;          // 主轨（上行，玩家）
+    this.trackB = null;         // 下行轨道样本
+    this.aiTrains = [];
+    this.signals = [];
+    this.stationObjs = [];
+    this.landmarks = [];
+    this.buildings = null;
+    this.trees = null;
+    this.extent = null;         // {minX,maxX,minZ,maxZ}
+    this._parseStations();
+    this._buildSpline();
+    this._assignElevation();
+    this._buildTerrain();
+    this._buildRivers();
+    this._buildTrackMeshes();
+    this._buildStations();
+    this._buildBuildings();
+    this._buildLandmarks();
+    this._buildSignals();
+    this._buildAITrains();
+  }
+
+  /* ---------- 车站解析 + 全网换乘表 ---------- */
+  static TRANSFER = {};   // 站名 → Set(线路id)
+  _parseStations() {
+    const raw = this.line.stations.split('|').map(s => {
+      const p = s.split(':');
+      return { name: p[0], x: parseFloat(p[1]), z: parseFloat(p[2]) };
+    });
+    // 环线：去掉末尾重复的起点
+    if (this.line.loops && raw.length > 1 && raw[0].name === raw[raw.length - 1].name) raw.pop();
+    raw.forEach(st => {
+      if (!World.TRANSFER[st.name]) World.TRANSFER[st.name] = new Set();
+      World.TRANSFER[st.name].add(this.line.id);
+    });
+    this.stations = raw;
+    this.rawLen = raw.reduce((a, b, i, arr) => i ? a + Math.hypot(b.x - arr[i - 1].x, b.z - arr[i - 1].z) : 0, 0) * U10;
+  }
+
+  /* ---------- 样条采样（Catmull-Rom） ---------- */
+  static catmull(p0, p1, p2, p3, t) {
+    const t2 = t * t, t3 = t2 * t;
+    const f = (a, b, c, d) => 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+    return [f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])];
+  }
+  _buildSpline() {
+    const pts = this.stations.map(s => [s.x, s.z]);
+    const n = pts.length;
+    const loop = this.line.loops;
+    // 环线取模取点；非环线端点钳制（否则首尾段会用对端控制点产生巨大回环）
+    const P = i => loop ? pts[((i % n) + n) % n] : pts[clamp(i, 0, n - 1)];
+    const raw = [];
+    for (let i = 0; i < (loop ? n : n - 1); i++) {
+      const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+      const segLen = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+      const steps = Math.max(8, Math.ceil(segLen / SAMPLE_STEP));
+      for (let k = 0; k < steps; k++) raw.push(World.catmull(p0, p1, p2, p3, k / steps));
+    }
+    if (loop) raw.push([raw[0][0], raw[0][1]]);
+    // 平滑 + 累计里程
+    const sm = raw.slice();
+    for (let it = 0; it < 3; it++) {
+      for (let i = 1; i < sm.length - 1; i++) {
+        sm[i][0] = (raw[i - 1][0] + raw[i][0] * 2 + raw[i + 1][0]) / 4;
+        sm[i][1] = (raw[i - 1][1] + raw[i][1] * 2 + raw[i + 1][1]) / 4;
+      }
+      for (let i = 1; i < sm.length - 1; i++) { raw[i][0] = sm[i][0]; raw[i][1] = sm[i][1]; }
+    }
+    const samples = [];
+    let cum = 0;
+    for (let i = 0; i < raw.length; i++) {
+      if (i > 0) cum += Math.hypot(raw[i][0] - raw[i - 1][0], raw[i][1] - raw[i - 1][1]);
+      samples.push({ x: raw[i][0], z: raw[i][1], y: 0, cum, tanX: 0, tanZ: 0, grade: 0, limit: this.line.vmax / 3.6, curv: 0 });
+    }
+    // 切线
+    for (let i = 0; i < samples.length; i++) {
+      const a = samples[Math.max(0, i - 3)], b = samples[Math.min(samples.length - 1, i + 3)];
+      const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz) || 1;
+      samples[i].tanX = dx / d; samples[i].tanZ = dz / d;
+    }
+    // 非环线：终点站外延长尾轨（折返线/越行线，约 100m）
+    if (!this.line.loops) {
+      const extN = Math.round(10 / SAMPLE_STEP);
+      const s0 = samples[0], sN = samples[samples.length - 1];
+      for (let i = extN; i >= 1; i--) {
+        samples.unshift({ x: s0.x - s0.tanX * SAMPLE_STEP * i, z: s0.z - s0.tanZ * SAMPLE_STEP * i, y: s0.y, cum: 0, tanX: s0.tanX, tanZ: s0.tanZ, grade: 0, limit: s0.limit, curv: 0 });
+      }
+      for (let i = 1; i <= extN; i++) {
+        samples.push({ x: sN.x + sN.tanX * SAMPLE_STEP * i, z: sN.z + sN.tanZ * SAMPLE_STEP * i, y: sN.y, cum: 0, tanX: sN.tanX, tanZ: sN.tanZ, grade: 0, limit: sN.limit, curv: 0 });
+      }
+      let c2 = 0;
+      for (let i = 0; i < samples.length; i++) {
+        if (i) c2 += Math.hypot(samples[i].x - samples[i - 1].x, samples[i].z - samples[i - 1].z);
+        samples[i].cum = c2;
+      }
+    }
+    // 曲率 → 限速（缓和舒适横向加速度 0.55 m/s²）
+    const K = 14;
+    for (let i = 0; i < samples.length; i++) {
+      const a = samples[Math.max(0, i - K)], b = samples[Math.min(samples.length - 1, i + K)];
+      const d = Math.max(0.001, (b.cum - a.cum));
+      const dAng = Math.abs(Math.atan2(b.tanZ, b.tanX) - Math.atan2(a.tanZ, a.tanX));
+      const curv = Math.min(dAng, Math.PI * 2 - dAng) / d;   // 1/单位
+      const R = 1 / Math.max(curv, 1e-6) * U10;              // 米
+      samples[i].curv = curv;
+      const vCurve = Math.sqrt(0.55 * R);                    // m/s
+      samples[i].limit = Math.min(this.line.vmax / 3.6, Math.max(4, vCurve));
+    }
+    // 车站里程定位
+    this.stationIdx = [];
+    let si = 0;
+    this.stations.forEach((st, idx) => {
+      let best = 0, bd = 1e18;
+      for (let i = Math.max(0, si - 20); i < samples.length; i++) {
+        const d = dist2(st.x, st.z, samples[i].x, samples[i].z);
+        if (d < bd) { bd = d; best = i; }
+      }
+      si = best;
+      this.stationIdx.push({ s: samples[best].cum, idx: best, name: st.name, x: st.x, z: st.z, transfer: World.TRANSFER[st.name].size > 1, note: STATION_NOTES[st.name] || '' });
+    });
+    this.totalLen = samples[samples.length - 1].cum;
+    this.samples = samples;
+    let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
+    samples.forEach(p => { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z); });
+    this.extent = { minX: minX - 90, maxX: maxX + 90, minZ: minZ - 90, maxZ: maxZ + 90 };
+  }
+
+  /* ---------- 地形高程函数（噪声 + 山体 + 江河切割） ---------- */
+  _terrainBase(x, z) {
+    let h = (noise2(x * 0.004, z * 0.004) * 0.6 + noise2(x * 0.013, z * 0.013) * 0.35 + noise2(x * 0.045, z * 0.045) * 0.12) * 11;
+    const bumps = [
+      [-300, 330, 450, 13, '渝中半岛'], [450, 350, 700, 27, '南山'], [-1250, 120, 800, 29, '歌乐山'],
+      [-1600, 600, 700, 25, '中梁山'], [-2200, -650, 900, 31, '缙云山'], [-2350, 160, 950, 9, '大学城台地'],
+      [-1350, -330, 850, 2, '江北平原'], [350, -350, 900, 16, '铁山坪'], [-750, 700, 900, 20, '云篆山'],
+    ];
+    for (const [bx, bz, br, amp] of bumps) {
+      const d = Math.sqrt((x - bx) ** 2 + (z - bz) ** 2) / br;
+      if (d < 1.6) h += amp * Math.exp(-d * d) * 1.0;
+    }
+    return h;
+  }
+  _riverDist(x, z) {  // 距江河中心线最小距离（单位），返回 {d, river}
+    let best = 1e9, rv = null;
+    for (const r of RIVERS) {
+      const p = r.pts;
+      for (let i = 0; i < p.length - 1; i++) {
+        const ax = p[i][0], az = p[i][1], bx = p[i + 1][0], bz = p[i + 1][1];
+        const dx = bx - ax, dz = bz - az, L = Math.max(1e-6, dx * dx + dz * dz);
+        let t = ((x - ax) * dx + (z - az) * dz) / L;
+        t = clamp(t, 0, 1);
+        const d = Math.hypot(x - (ax + dx * t), z - (az + dz * t));
+        if (d < best) { best = d; rv = r; }
+      }
+    }
+    return { d: best, river: rv };
+  }
+  _groundHeight(x, z, ignoreTrackBlend = true) {
+    const rd = this._riverDist(x, z);
+    let h = this._terrainBase(x, z);
+    if (rd.d < rd.river.width / 2 + 6) {
+      const t = clamp((rd.river.width / 2 + 6 - rd.d) / 6, 0, 1);
+      h = lerp(h, RIVER_Y - 1, t);   // 河道下切（河岸 60m 过渡）
+    }
+    if (!ignoreTrackBlend && this.samples) {
+      // 轨道走廊贴地：避免轨道悬空/入土
+      let bd = 1e9;
+      const ss = this.samples, step = Math.max(6, Math.floor(ss.length / 3000));
+      for (let i = 0; i < ss.length; i += step) {
+        const d = dist2(x, z, ss[i].x, ss[i].z);
+        if (d < bd) bd = d;
+      }
+      if (bd < 14 * 14) {
+        const t = clamp(Math.sqrt(bd) / 14, 0, 1);
+        // 用最近样本高程做贴地混合
+        let by = h, bd2 = 1e9;
+        for (let i = 0; i < ss.length; i += step) {
+          const d = dist2(x, z, ss[i].x, ss[i].z);
+          if (d < bd2) { bd2 = d; by = ss[i].y; }
+        }
+        h = lerp(h, by - 0.22, 1 - smooth(t));
+      }
+    }
+    return h;
+  }
+  _assignElevation() {
+    const ss = this.samples;
+    // 初值：地形
+    for (const p of ss) {
+      const rd = this._riverDist(p.x, p.z);
+      let h = this._terrainBase(p.x, p.z);
+      if (rd.d < rd.river.width / 2 + 6) {
+        const t = clamp((rd.river.width / 2 + 6 - rd.d) / 6, 0, 1);
+        h = lerp(h, RIVER_Y - 1, t);
+      }
+      p.y = h + 1.2;
+      p.nearRiver = rd.d < rd.river.width / 2 + 10;
+    }
+    // 平滑（大窗口，保留总体坡度）
+    const w = 26;
+    const tmp = ss.map(p => p.y);
+    for (let i = 0; i < ss.length; i++) {
+      let sum = 0, cnt = 0;
+      for (let k = -w; k <= w; k++) { const j = i + k; if (j >= 0 && j < ss.length) { sum += tmp[j]; cnt++; } }
+      ss[i].y = sum / cnt;
+    }
+    // 桥跨处理：穿越江河的区间抬升为桥面
+    for (const river of RIVERS) {
+      let inRiver = false, start = -1;
+      for (let i = 0; i < ss.length; i++) {
+        const rd = this._riverDist(ss[i].x, ss[i].z);
+        const over = rd.d < river.width / 2 + 1.5;
+        if (over && !inRiver) { inRiver = true; start = i; }
+        if ((!over || i === ss.length - 1) && inRiver) {
+          const end = i === ss.length - 1 && over ? i : i - 1;
+          const len = end - start + 1;
+          const pad = Math.max(6, Math.round(len * 0.35));
+          for (let k = Math.max(0, start - pad); k <= Math.min(ss.length - 1, end + pad); k++) {
+            const t = clamp(Math.min(k - (start - pad), (end + pad) - k) / Math.min(pad, 14), 0, 1);
+            ss[k].y = lerp(BRIDGE_Y, ss[k].y, smooth(t));
+            ss[k].bridge = true;
+            ss[k].bridgeRiver = river.name;
+          }
+          inRiver = false;
+        }
+      }
+    }
+    // 坡道限幅（≤60‰，山城大坡道得以保留）
+    for (let it = 0; it < 6; it++) {
+      for (let i = 1; i < ss.length; i++) {
+        const dz = ss[i].y - ss[i - 1].y, ds = ss[i].cum - ss[i - 1].cum;
+        const g = dz / ds;
+        if (Math.abs(g) > 0.06) ss[i].y = ss[i - 1].y + Math.sign(g) * 0.06 * ds;
+      }
+    }
+    // 坡道 + 最终平滑
+    const tmp2 = ss.map(p => p.y);
+    for (let i = 0; i < ss.length; i++) {
+      let sum = 0, cnt = 0;
+      for (let k = -5; k <= 5; k++) { const j = i + k; if (j >= 0 && j < ss.length) { sum += tmp2[j]; cnt++; } }
+      ss[i].y = sum / cnt;
+    }
+    for (let i = 1; i < ss.length; i++) {
+      const ds = Math.max(1e-4, (ss[i].cum - ss[i - 1].cum));
+      ss[i].grade = clamp((ss[i].y - ss[i - 1].y) / ds, -0.06, 0.06) * 1000;  // ‰
+    }
+    // 下行轨道样本（偏移 4.6 单位；里程镜像：B 线 0 里程在“线路上行终点”）
+    const off = 0.46;
+    const B = [];
+    for (let i = ss.length - 1; i >= 0; i--) {
+      const p = ss[i];
+      B.push({ x: p.x - p.tanZ * off, z: p.z + p.tanX * off, y: p.y, cum: this.totalLen - p.cum, bridge: p.bridge, tanX: p.tanX, tanZ: p.tanZ, limit: p.limit, grade: -p.grade });
+    }
+    this.trackB = B;
+  }
+
+  /* ---------- 地形网格 ---------- */
+  _buildTerrain() {
+    const e = this.extent;
+    const w = e.maxX - e.minX, h = e.maxZ - e.minZ;
+    const seg = CFG.quality === 'high' ? 190 : CFG.quality === 'mid' ? 140 : 100;
+    const geo = new this.T.PlaneGeometry(w, h, seg, seg);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    const cGrass = new this.T.Color(0x4c7a3a), cRock = new this.T.Color(0x8a7a66), cDirt = new this.T.Color(0x9c8a60), cBed = new this.T.Color(0x2b3b4a), cSnow = new this.T.Color(0xcfd4d8);
+    const tmpC = new this.T.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i) + e.minX + w / 2, z = pos.getZ(i) + e.minZ + h / 2;
+      const y = this._groundHeight(x, z, false);
+      pos.setY(i, y);
+      // 按高程+江距着色
+      const rd = this._riverDist(x, z);
+      if (rd.d < rd.river.width / 2) tmpC.copy(cBed);
+      else if (y > 22) tmpC.copy(cSnow);
+      else if (y > 13) tmpC.copy(cRock);
+      else if (y > 3) tmpC.copy(cGrass);
+      else tmpC.copy(cDirt);
+      tmpC.offsetHSL(0, 0, (noise2(x * 0.02, z * 0.02)) * 0.05);
+      colors[i * 3] = tmpC.r; colors[i * 3 + 1] = tmpC.g; colors[i * 3 + 2] = tmpC.b;
+    }
+    geo.setAttribute('color', new this.T.BufferAttribute(colors, 3));
+    const mat = new this.T.MeshLambertMaterial({ vertexColors: true });
+    const mesh = new this.T.Mesh(geo, mat);
+    mesh.name = 'terrain';
+    mesh.receiveShadow = false;
+    this.group.add(mesh);
+    this.terrainMesh = mesh;
+  }
+
+  /* ---------- 江河 ---------- */
+  _buildRivers() {
+    for (const river of RIVERS) {
+      const path = [];
+      // 每段细分
+      for (let i = 0; i < river.pts.length - 1; i++) {
+        const a = river.pts[i], b = river.pts[i + 1];
+        const seg = Math.max(4, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 6));
+        for (let k = 0; k <= seg; k++) path.push([lerp(a[0], b[0], k / seg), lerp(a[1], b[1], k / seg)]);
+      }
+      const verts = [], idxs = [];
+      const w2 = river.width / 2;
+      for (let i = 0; i < path.length; i++) {
+        const a = path[Math.max(0, i - 1)], b = path[Math.min(path.length - 1, i + 1)];
+        let nx = -(b[1] - a[1]), nz = b[0] - a[0];
+        const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+        verts.push(path[i][0] - nx * w2, RIVER_Y, path[i][1] - nz * w2);
+        verts.push(path[i][0] + nx * w2, RIVER_Y, path[i][1] + nz * w2);
+      }
+      for (let i = 0; i < path.length - 1; i++) {
+        const a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
+        idxs.push(a, b, c, b, d, c);
+      }
+      const geo = new this.T.BufferGeometry();
+      geo.setAttribute('position', new this.T.Float32BufferAttribute(verts, 3));
+      geo.setIndex(idxs);
+      geo.computeVertexNormals();
+      const mat = new this.T.MeshPhongMaterial({ color: 0x3f6d7a, transparent: true, opacity: 0.9, shininess: 130, specular: 0x5588aa });
+      const m = new this.T.Mesh(geo, mat);
+      m.name = 'river-' + river.name;
+      this.group.add(m);
+      if (!this.riverMats) this.riverMats = [];
+      this.riverMats.push({ mat, river });
+    }
+  }
+
+  /* ---------- 轨道构筑物 ---------- */
+  _buildTrackMeshes() {
+    const T = this.T, ss = this.samples;
+    const mono = this.line.type === 'mono';
+    const grp = new T.Group(); grp.name = 'track';
+    this.group.add(grp);
+
+    /* 主轨 + 下行轨 */
+    for (const [samples2, key] of [[ss, 'A'], [this.trackB, 'B']]) {
+      const sub = new T.Group(); sub.name = 'track-' + key; grp.add(sub);
+      const count = samples2.length;
+      if (mono) {
+        // ---- 跨座式单轨 PC 轨道梁（矩形截面 0.85×1.8m）----
+        const bw = 0.085, bh = 0.18;
+        const v = [];
+        for (let i = 0; i < count; i++) {
+          const p = samples2[i], q = samples2[Math.min(count - 1, i + 1)];
+          let nx = -(q.z - p.z), nz = q.x - p.x;
+          const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+          const top = p.y + bh, bot = p.y - bh;
+          v.push(p.x - nx * bw, top, p.z - nz * bw, p.x + nx * bw, top, p.z + nz * bw,
+                 p.x - nx * bw, bot, p.z - nz * bw, p.x + nx * bw, bot, p.z + nz * bw);
+        }
+        const g = new T.BufferGeometry();
+        g.setAttribute('position', new T.Float32BufferAttribute(v, 3));
+        const idx = [];
+        for (let i = 0; i < count - 1; i++) {
+          const a = i * 4, b = i * 4 + 1, c = i * 4 + 4, d = i * 4 + 5;
+          idx.push(a, b, c, b, d, c);           // 顶面
+          idx.push(a + 2, c + 2, b + 2, b + 2, c + 2, d + 2); // 底面
+          idx.push(a, c, a + 2, a + 2, c, c + 2); // 侧面1
+          idx.push(b, b + 2, d, d, b + 2, d + 2); // 侧面2
+        }
+        g.setIndex(idx); g.computeVertexNormals();
+        const mat = new T.MeshLambertMaterial({ color: 0xb9bec4 });
+        sub.add(new T.Mesh(g, mat));
+        // 供电轨（梁两侧纵向小条）
+        const mat2 = new T.LineBasicMaterial({ color: 0x5a646e });
+        const lp = [], rp = [];
+        for (let i = 0; i < count; i += 2) {
+          const p = samples2[i], q = samples2[Math.min(count - 1, i + 1)];
+          let nx = -(q.z - p.z), nz = q.x - p.x;
+          const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+          lp.push(new T.Vector3(p.x - nx * (bw + 0.03), p.y + 0.03, p.z - nz * (bw + 0.03)));
+          rp.push(new T.Vector3(p.x + nx * (bw + 0.03), p.y + 0.03, p.z + nz * (bw + 0.03)));
+        }
+        sub.add(new T.Line(new T.BufferGeometry().setFromPoints(lp), mat2));
+        sub.add(new T.Line(new T.BufferGeometry().setFromPoints(rp), mat2));
+      } else {
+        // ---- 钢轮钢轨：道床板 + 两条钢轨 + 轨枕 ----
+        const slabW = 0.62;
+        const v = [];
+        for (let i = 0; i < count; i++) {
+          const p = samples2[i], q = samples2[Math.min(count - 1, i + 1)];
+          let nx = -(q.z - p.z), nz = q.x - p.x;
+          const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+          v.push(p.x - nx * slabW, p.y - 0.06, p.z - nz * slabW, p.x + nx * slabW, p.y - 0.06, p.z + nz * slabW);
+        }
+        const g = new T.BufferGeometry();
+        g.setAttribute('position', new T.Float32BufferAttribute(v, 3));
+        const idx = [];
+        for (let i = 0; i < count - 1; i++) {
+          const a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
+          idx.push(a, b, c, b, d, c);
+        }
+        g.setIndex(idx); g.computeVertexNormals();
+        const slab = new T.Mesh(g, new T.MeshLambertMaterial({ color: 0x7d8388 }));
+        sub.add(slab);
+        // 钢轨（Line 粗线 ×2）
+        const railGap = 0.072;
+        for (const side of [-1, 1]) {
+          const pts = [];
+          for (let i = 0; i < count; i++) {
+            const p = samples2[i], q = samples2[Math.min(count - 1, i + 1)];
+            let nx = -(q.z - p.z), nz = q.x - p.x;
+            const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+            pts.push(new T.Vector3(p.x - nx * railGap * side, p.y, p.z - nz * railGap * side));
+          }
+          const lg = new T.BufferGeometry().setFromPoints(pts);
+          sub.add(new T.Line(lg, new T.LineBasicMaterial({ color: 0x8d959c, linewidth: 2 })));
+        }
+        // 轨枕（instanced 小盒）
+        const tieGeo = new T.BoxGeometry(0.46, 0.02, 0.05);
+        const tieMat = new T.MeshLambertMaterial({ color: 0x514c48 });
+        const tieCount = Math.floor(count / 10);
+        const ties = new T.InstancedMesh(tieGeo, tieMat, tieCount);
+        const M4 = new T.Matrix4();
+        for (let i = 0; i < tieCount; i++) {
+          const p = samples2[i * 10], q = samples2[Math.min(count - 1, i * 10 + 1)];
+          const ang = Math.atan2(q.z - p.z, q.x - p.x);
+          M4.makeRotationY(ang);
+          M4.setPosition(p.x, p.y - 0.05, p.z);
+          ties.setMatrixAt(i, M4);
+        }
+        sub.add(ties);
+        // 接触网支柱 + 接触线（主轨下行轨都立杆太密：仅主轨 A 立杆）
+        if (key === 'A') {
+          const poleGeo = new T.CylinderGeometry(0.03, 0.04, 1.15, 6);
+          const poleMat = new T.MeshLambertMaterial({ color: 0x9aa4ad });
+          const poleN = Math.floor(count / 30);
+          const wirePts = [];
+          for (let i = 0; i <= poleN; i++) {
+            const p = samples2[Math.min(count - 1, i * 30)];
+            const pole = new T.Mesh(poleGeo, poleMat);
+            pole.position.set(p.x, p.y + 0.58, p.z);
+            sub.add(pole);
+            wirePts.push(new T.Vector3(p.x, p.y + 1.12, p.z));
+          }
+          if (wirePts.length > 1) {
+            const wg = new T.BufferGeometry().setFromPoints(wirePts);
+            sub.add(new T.Line(wg, new T.LineBasicMaterial({ color: 0x333a40 })));
+          }
+        }
+      }
+      /* 桥墩（高架/跨江段） */
+      const pierGeo = new T.CylinderGeometry(0.055, 0.09, 1, 6);
+      const pierMat = new T.MeshLambertMaterial({ color: 0xc2c6ca });
+      let lastPier = -1e9;
+      for (let i = 0; i < count; i += 24) {
+        const p = samples2[i];
+        const ground = this._groundHeight(p.x, p.z, true);
+        if (p.y - ground > 0.6 && p.cum - lastPier > 5) {
+          lastPier = p.cum;
+          const ph = p.y - ground + 0.4;
+          const pier = new T.Mesh(new T.CylinderGeometry(0.05, 0.08, ph, 6), pierMat);
+          pier.position.set(p.x, ground + ph / 2 - 0.35, p.z);
+          sub.add(pier);
+          if (p.bridge) {
+            const cap = new T.Mesh(new T.BoxGeometry(0.5, 0.05, 0.22), pierMat);
+            cap.position.set(p.x, p.y - 0.05, p.z);
+            sub.add(cap);
+          }
+        }
+      }
+    }
+
+    /* ---- 跨江大桥：梁体 + 拉索塔 ---- */
+    this.bridges = [];
+    for (const river of RIVERS) {
+      const spans = [];
+      let cur = null;
+      for (let i = 0; i < ss.length; i++) {
+        const over = ss[i].bridge && ss[i].bridgeRiver === river.name;
+        if (over && !cur) cur = { a: i, b: i };
+        else if (over && cur) cur.b = i;
+        else if (!over && cur) { spans.push(cur); cur = null; }
+      }
+      if (cur) spans.push(cur);
+      for (const sp of spans) {
+        if (sp.b - sp.a < 8) continue;
+        const styled = river.name === '长江' || (sp.b - sp.a) * U10 > 400;
+        this._buildBridge(grp, river, sp.a, sp.b, styled);
+      }
+    }
+  }
+
+  _buildBridge(grp, river, i0, i1, styled) {
+    const T = this.T, ss = this.samples;
+    const mid = Math.floor((i0 + i1) / 2);
+    const deckW = 0.95;
+    // 梁体
+    const v = [];
+    for (let i = i0; i <= i1; i++) {
+      const p = ss[i], q = ss[Math.min(i1, i + 1)];
+      let nx = -(q.z - p.z), nz = q.x - p.x;
+      const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+      v.push(p.x - nx * deckW, p.y - 0.16, p.z - nz * deckW, p.x + nx * deckW, p.y - 0.16, p.z + nz * deckW,
+             p.x - nx * deckW, p.y - 0.32, p.z - nz * deckW, p.x + nx * deckW, p.y - 0.32, p.z + nz * deckW);
+    }
+    const g = new T.BufferGeometry();
+    g.setAttribute('position', new T.Float32BufferAttribute(v, 3));
+    const idx = [];
+    const n = i1 - i0 + 1;
+    for (let i = 0; i < n - 1; i++) {
+      const a = i * 4, b = i * 4 + 1, c = i * 4 + 4, d = i * 4 + 5;
+      idx.push(a, b, c, b, d, c, a + 2, c + 2, b + 2, b + 2, c + 2, d + 2,
+        a, c, a + 2, a + 2, c, c + 2, b, b + 2, d, d, b + 2, d + 2);
+    }
+    g.setIndex(idx); g.computeVertexNormals();
+    const deck = new T.Mesh(g, new T.MeshLambertMaterial({ color: styled ? 0xb64a3a : 0x9aa2a8 }));
+    grp.add(deck);
+    // 江中桥墩
+    for (const t of [0.22, 0.5, 0.78]) {
+      const i = i0 + Math.round((i1 - i0) * t);
+      const p = ss[i];
+      const ph = p.y - RIVER_Y + 3;
+      const pier = new T.Mesh(new T.BoxGeometry(0.14, ph, 0.18), new T.MeshLambertMaterial({ color: 0xb9bec4 }));
+      pier.position.set(p.x, RIVER_Y - 1.6 + ph / 2, p.z);
+      grp.add(pier);
+    }
+    this.bridges.push({ i0, i1, styled });
+    if (styled) {
+      // 斜拉桥：双塔 + 斜拉索
+      const towerH = 5.2;
+      const tp = ss[mid];
+      for (const side of [-1, 1]) {
+        const tower = new T.Mesh(new T.BoxGeometry(0.09, towerH, 0.09), new T.MeshLambertMaterial({ color: 0xd8dde2 }));
+        tower.position.set(tp.x + side * 0.34, tp.y + towerH / 2 - 0.3, tp.z);
+        grp.add(tower);
+        // 拉索
+        for (let k = -6; k <= 6; k++) {
+          if (k === 0) continue;
+          const i = mid + k * 6;
+          if (i < i0 || i > i1) continue;
+          const p = ss[i];
+          const top = new T.Vector3(tp.x + side * 0.34, tp.y + towerH - 0.35, tp.z);
+          const bot = new T.Vector3(p.x, p.y - 0.15, p.z);
+          const lg = new T.BufferGeometry().setFromPoints([top, bot]);
+          grp.add(new T.Line(lg, new T.LineBasicMaterial({ color: 0xe8ecf0 })));
+        }
+      }
+    }
+  }
+
+  /* ---------- 车站（岛式站台 + 雨棚 + 屏蔽门 + 站牌） ---------- */
+  _makeSignTexture(name, sub = '') {
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+    const g = cv.getContext('2d');
+    g.fillStyle = this.line.color; g.fillRect(0, 0, 256, 64);
+    g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(0, 0, 256, 10);
+    g.fillStyle = '#fff'; g.font = 'bold 34px "Microsoft YaHei",sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(name, 128, 34);
+    if (sub) { g.font = '16px "Microsoft YaHei",sans-serif'; g.fillStyle = 'rgba(255,255,255,.85)'; g.fillText(sub, 128, 56); }
+    const tex = new this.T.CanvasTexture(cv);
+    tex.colorSpace = this.T.SRGBColorSpace;
+    return tex;
+  }
+  _buildStations() {
+    const T = this.T;
+    const mono = this.line.type === 'mono';
+    const trainLen = this.line.type === 'mono' ? 8 * 1.46 : STOCK_PARAMS[this._stockKey()].cars * STOCK_PARAMS[this._stockKey()].carLen / 10;
+    const L = trainLen + 0.9;
+    const carsN = mono ? 8 : STOCK_PARAMS[this._stockKey()].cars;
+    const doorCount = 4 * carsN;
+    const doorW = 0.16, doorSpacing = (trainLen - 0.6) / doorCount;
+    for (let si = 0; si < this.stationIdx.length; si++) {
+      const st = this.stationIdx[si];
+      const p = this.samples[st.idx];
+      const grp = new T.Group();
+      grp.name = 'station-' + st.name;
+      grp.position.set(p.x, 0, p.z);
+      grp.rotation.y = -Math.atan2(p.tanZ, p.tanX);
+      this.group.add(grp);
+      const platTop = p.y + (mono ? 0.24 : 0.0);
+      // 站台板
+      const plat = new T.Mesh(new T.BoxGeometry(L, 0.06, 0.44), new T.MeshLambertMaterial({ color: 0xb7bcc1 }));
+      plat.position.y = platTop - 0.03;
+      grp.add(plat);
+      const edge = new T.Mesh(new T.BoxGeometry(L, 0.02, 0.5), new T.MeshLambertMaterial({ color: 0xffc400 }));
+      edge.position.y = platTop + 0.005;
+      grp.add(edge);
+      // 雨棚
+      const roofMat = new T.MeshLambertMaterial({ color: 0x8fa0ad, side: T.DoubleSide });
+      for (const s of [-1, 1]) {
+        const roof = new T.Mesh(new T.BoxGeometry(L, 0.02, 0.78), roofMat);
+        roof.position.set(0, platTop + 0.62, 0);
+        roof.rotation.x = s * 0.1;
+        roof.position.z = s * 0.3;
+        grp.add(roof);
+      }
+      for (let k = 0; k <= 6; k++) {
+        const col = new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.6, 6), new T.MeshLambertMaterial({ color: 0xcfd4d8 }));
+        col.position.set(-L / 2 + k * L / 6, platTop + 0.3, 0);
+        grp.add(col);
+      }
+      // 屏蔽门（两侧，含可动门扇）
+      const psd = { doors: [], open: false, station: st.name, group: grp };
+      for (const side of [-1, 1]) {
+        const glass = new T.Mesh(new T.BoxGeometry(L, 0.3, 0.02), new T.MeshPhongMaterial({ color: 0x9fc3d8, transparent: true, opacity: 0.32 }));
+        glass.position.set(0, platTop + 0.15, side * 0.235);
+        grp.add(glass);
+        const rail = new T.Mesh(new T.BoxGeometry(L, 0.03, 0.03), new T.MeshLambertMaterial({ color: 0xd8dde2 }));
+        rail.position.set(0, platTop + 0.03, side * 0.235);
+        grp.add(rail);
+        for (let d = 0; d < doorCount; d++) {
+          const dz = -L / 2 + 0.4 + d * doorSpacing;
+          for (const w of [-1, 1]) {
+            const panel = new T.Mesh(new T.BoxGeometry(doorW / 2, 0.28, 0.012), new T.MeshPhongMaterial({ color: 0x7fb6cf, transparent: true, opacity: 0.55 }));
+            panel.position.set(dz + w * doorW / 4, platTop + 0.15, side * 0.235);
+            panel.userData = { base: dz + w * doorW / 4, w };
+            grp.add(panel);
+            psd.doors.push(panel);
+          }
+        }
+      }
+      // 站牌（雨棚下悬吊 + 站台端部立柱）
+      const tex = this._makeSignTexture(st.name, st.transfer ? '换乘站 · INTERCHANGE' : '');
+      const signMat = new T.MeshBasicMaterial({ map: tex });
+      const sign = new T.Mesh(new T.PlaneGeometry(0.62, 0.155), signMat);
+      sign.position.set(0, platTop + 0.5, 0);
+      sign.rotation.y = Math.PI / 2;
+      grp.add(sign);
+      for (const end of [-1, 1]) {
+        const pole = new T.Mesh(new T.CylinderGeometry(0.02, 0.02, 0.42, 6), new T.MeshLambertMaterial({ color: 0x9aa4ad }));
+        pole.position.set(end * (L / 2 + 0.1), platTop + 0.21, 0);
+        grp.add(pole);
+        const s2 = new T.Mesh(new T.PlaneGeometry(0.52, 0.13), signMat);
+        s2.position.set(end * (L / 2 + 0.1), platTop + 0.44, 0);
+        s2.rotation.y = Math.PI / 2;
+        grp.add(s2);
+      }
+      // 夜间站台灯
+      const lampMat = new T.MeshBasicMaterial({ color: 0x3a4250 });
+      for (let k = 0; k <= 6; k++) {
+        const lamp = new T.Mesh(new T.BoxGeometry(0.05, 0.012, 0.05), lampMat);
+        lamp.position.set(-L / 2 + k * L / 6, platTop + 0.58, 0);
+        lamp.userData.night = true;
+        grp.add(lamp);
+        this.nightLights = this.nightLights || [];
+        this.nightLights.push(lamp);
+      }
+      this.stationObjs.push(psd);
+    }
+  }
+  _stockKey() { return this.line.type === 'mono' ? 'mono' : (this.line.id === 'L1' || this.line.id === 'L6' || this.line.id === 'EXPO' ? 'B' : (this.line.id === 'BT' ? 'city' : 'As')); }
+
+  /* ---------- 城市建筑 ---------- */
+  _buildBuildings() {
+    const T = this.T, e = this.extent;
+    const cell = 2.6;
+    // 轨道样本粗网格
+    const grid = new Map();
+    const ss = this.samples;
+    for (let i = 0; i < ss.length; i += 4) {
+      const cx = Math.floor(ss[i].x / cell), cz = Math.floor(ss[i].z / cell);
+      const key = cx + ',' + cz;
+      if (!grid.has(key)) grid.set(key, []);
+      grid.get(key).push(ss[i]);
+    }
+    const cells = [];
+    for (let x = Math.floor(e.minX / cell); x <= Math.ceil(e.maxX / cell); x++) {
+      for (let z = Math.floor(e.minZ / cell); z <= Math.ceil(e.maxZ / cell); z++) {
+        let bd = 1e9;
+        for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+          const arr = grid.get((x + dx) + ',' + (z + dz));
+          if (arr) for (const p of arr) { const d = dist2(x * cell, z * cell, p.x, p.z); if (d < bd) bd = d; }
+        }
+        bd = Math.sqrt(bd);
+        if (bd > 52) continue;
+        const rd = this._riverDist(x * cell, z * cell);
+        if (rd.d < rd.river.width / 2 + 1.2) continue;
+        const nearStation = this.stationIdx.some(si => dist2(x * cell, z * cell, this.samples[si.idx].x, this.samples[si.idx].z) < 10 * 10);
+        if (bd < 6.5 && !nearStation) continue;
+        const r = hash2(x * 3.7, z * 9.1, 7);
+        const density = bd < 16 ? 0.85 : bd < 30 ? 0.45 : 0.16;
+        if (r > 1 - density * 2) continue;
+        const hgt = (bd < 16 ? 0.35 + Math.abs(hash2(x, z, 3)) * 0.5 : 0.12 + Math.abs(hash2(x, z, 5)) * 0.3) * (3.4);
+        cells.push({ x: x * cell + (hash2(x, z, 11) * 0.8), z: z * cell + (hash2(x, z, 13) * 0.8), h: hgt, big: bd < 16 && hash2(x, z, 17) > 0.3 });
+      }
+    }
+    // 窗户贴图（昼夜两版）
+    const mkTex = night => {
+      const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64;
+      const g = cv.getContext('2d');
+      g.fillStyle = night ? '#141a22' : '#3a4350';
+      g.fillRect(0, 0, 64, 64);
+      for (let y = 4; y < 60; y += 12) for (let x = 4; x < 60; x += 12) {
+        const lit = hash2(x, y, 5) > (night ? -0.25 : 0.3);
+        g.fillStyle = lit ? (night ? '#ffd27a' : '#6d7c8e') : (night ? '#0d1117' : '#2c333d');
+        g.fillRect(x, y, 8, 8);
+      }
+      const t = new T.CanvasTexture(cv); t.colorSpace = T.SRGBColorSpace; return t;
+    };
+    this.texWinDay = mkTex(false); this.texWinNight = mkTex(true);
+    const geo = new T.BoxGeometry(1, 1, 1);
+    const mat = new T.MeshLambertMaterial({ map: this.texWinDay });
+    const mesh = new T.InstancedMesh(geo, mat, cells.length);
+    const M4 = new T.Matrix4(), col = new T.Color();
+    const palette = [0xb9b6b0, 0x9a9aa2, 0xcbb8a8, 0x8d95a0, 0xc2c0ba];
+    cells.forEach((c, i) => {
+      M4.makeScale(0.62 + hash2(c.x, c.z, 19) * 0.3, c.h, 0.62 + hash2(c.x, c.z, 23) * 0.3);
+      M4.setPosition(c.x, c.h / 2, c.z);
+      mesh.setMatrixAt(i, M4);
+      col.set(palette[Math.floor(Math.abs(hash2(c.x, c.z, 29)) * palette.length) % palette.length]);
+      mesh.setColorAt(i, col);
+    });
+    mesh.name = 'buildings';
+    this.group.add(mesh);
+    this.buildings = mesh;
+    // 树木（远离轨道的山坡）
+    const treeCells = [];
+    for (let x = Math.floor(e.minX / cell); x <= Math.ceil(e.maxX / cell); x++) {
+      for (let z = Math.floor(e.minZ / cell); z <= Math.ceil(e.maxZ / cell); z++) {
+        let bd = 1e9;
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+          const arr = grid.get((x + dx) + ',' + (z + dz));
+          if (arr) for (const p of arr) { const d = dist2(x * cell, z * cell, p.x, p.z); if (d < bd) bd = d; }
+        }
+        bd = Math.sqrt(bd);
+        if (bd < 22 || bd > 70) continue;
+        const rd = this._riverDist(x * cell, z * cell);
+        if (rd.d < rd.river.width / 2 + 1) continue;
+        const h = this._terrainBase(x * cell, z * cell);
+        if (h < 2) continue;
+        if (hash2(x * 5.3, z * 7.7, 31) > 0.42) treeCells.push({ x: x * cell + hash2(x, z, 33) * 1.2, z: z * cell + hash2(x, z, 37) * 1.2, s: 0.5 + Math.abs(hash2(x, z, 41)) * 0.9 });
+      }
+    }
+    const tGeo = new T.ConeGeometry(0.1, 0.4, 5);
+    const tMat = new T.MeshLambertMaterial({ color: 0x3f6d33 });
+    const tMesh = new T.InstancedMesh(tGeo, tMat, treeCells.length);
+    treeCells.forEach((c, i) => {
+      M4.makeScale(c.s, c.s, c.s);
+      M4.setPosition(c.x, c.s * 0.35, c.z);
+      tMesh.setMatrixAt(i, M4);
+    });
+    tMesh.name = 'trees';
+    this.group.add(tMesh);
+    this.trees = tMesh;
+  }
+
+  /* ---------- 地标：来福士 / 李子坝穿楼 ---------- */
+  _buildLandmarks() {
+    const T = this.T;
+    const has = name => this.stations.some(s => s.name === name);
+    if (has('朝天门')) {
+      const g = new T.Group();
+      const body = new T.MeshLambertMaterial({ color: 0xc8d2dc });
+      const glass = new T.MeshLambertMaterial({ color: 0x7ba7c9 });
+      const heights = [2.6, 3.4, 3.4, 2.6];
+      for (let i = 0; i < 4; i++) {
+        const tw = new T.Mesh(new T.BoxGeometry(0.62, heights[i], 0.62), body);
+        tw.position.set(-1.4 + i * 0.95, heights[i] / 2 + 0.2, -0.8);
+        g.add(tw);
+      }
+      // 水晶连廊
+      const bridge = new T.Mesh(new T.BoxGeometry(3.9, 0.5, 0.6), glass);
+      bridge.position.set(0, 2.75, -0.8);
+      bridge.rotation.z = -0.03;
+      g.add(bridge);
+      const base = new T.Mesh(new T.BoxGeometry(4.4, 0.22, 2.6), new T.MeshLambertMaterial({ color: 0x8d9398 }));
+      base.position.set(0, 0.1, -0.8);
+      g.add(base);
+      g.name = 'raffles';
+      this.group.add(g);
+      this.landmarks.push(g);
+    }
+    if (has('李子坝')) {
+      const si = this.stationIdx.find(s => s.name === '李子坝');
+      const p = this.samples[si.idx];
+      const g = new T.Group();
+      const mat = new T.MeshLambertMaterial({ color: 0xcbb8a0 });
+      const W = 11;                       // 沿轨道方向楼体长度
+      const slotY = p.y + 0.1, slotH = 0.55;
+      // 左右楼体（平行于轨道，夹出穿楼洞口）
+      for (const side of [-1, 1]) {
+        const block = new T.Mesh(new T.BoxGeometry(W, 3.6, 0.9), mat);
+        block.position.set(0, slotY + slotH / 2 + 0.3, side * (0.95));
+        g.add(block);
+      }
+      // 洞口上方的连体楼层（横跨轨道）
+      for (let f = 0; f < 3; f++) {
+        const floor = new T.Mesh(new T.BoxGeometry(W, 0.34, 2.8), mat);
+        floor.position.set(0, slotY + slotH + 0.17 + f * 0.36, 0);
+        g.add(floor);
+      }
+      const top = new T.Mesh(new T.BoxGeometry(W, 0.7, 2.8), mat);
+      top.position.set(0, slotY + slotH + 1.35, 0);
+      g.add(top);
+      // 招牌（朝向轨道一侧）
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+      const cg = cv.getContext('2d');
+      cg.fillStyle = '#00843D'; cg.fillRect(0, 0, 256, 64);
+      cg.fillStyle = '#fff'; cg.font = 'bold 36px "Microsoft YaHei"'; cg.textAlign = 'center'; cg.textBaseline = 'middle';
+      cg.fillText('李子坝 · 列车穿楼', 128, 34);
+      const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace;
+      const sign = new T.Mesh(new T.PlaneGeometry(2.6, 0.65), new T.MeshBasicMaterial({ map: tex }));
+      sign.position.set(0, slotY + slotH + 1.9, 1.48);
+      g.add(sign);
+      g.position.set(p.x, 0, p.z);
+      g.rotation.y = -Math.atan2(p.tanZ, p.tanX);
+      g.name = 'liziba';
+      this.group.add(g);
+      this.landmarks.push(g);
+    }
+  }
+
+  /* ---------- 列车建模（单轨 / B 型 / As 型 / 市域） ---------- */
+  _buildTrain(opts = {}) {
+    const T = this.T;
+    const key = this._stockKey();
+    const SP = STOCK_PARAMS[key];
+    const mono = this.line.type === 'mono';
+    const cars = SP.cars, carL = SP.carLen / 10, carW = SP.carW / 10, carH = SP.carH / 10;
+    const bodyColor = opts.ai ? 0xd8d8d4 : 0xeef0f2;
+    const lineCol = new T.Color(this.line.color).multiplyScalar(opts.ai ? 0.72 : 1);
+    const g = new T.Group();
+    const doorPanels = [];
+    const nightMats = [];
+    const winMat = new T.MeshPhongMaterial({ color: 0x1c2832, shininess: 40, specular: 0x223 });
+    (this._winMats = this._winMats || []).push(winMat);
+    const rideY = mono ? 0.18 + 0.10 : 0.045;
+    const totalL = cars * carL;
+    // 车门内嵌饰条材质
+    const doorMat = new T.MeshLambertMaterial({ color: mono ? 0xb9bec4 : 0xc8ccd0 });
+    const skirtMat = new T.MeshLambertMaterial({ color: 0x3a4148 });
+    for (let c = 0; c < cars; c++) {
+      const carG = new T.Group();
+      const cx = -totalL / 2 + carL * (c + 0.5);
+      carG.position.set(cx, rideY, 0);
+      // 车身
+      const body = new T.Mesh(new T.BoxGeometry(carL - 0.02, carH, carW - 0.02), new T.MeshLambertMaterial({ color: bodyColor }));
+      carG.add(body);
+      // 顶部倒角（略窄）
+      const top = new T.Mesh(new T.BoxGeometry(carL - 0.02, carH * 0.34, carW - 0.12), new T.MeshLambertMaterial({ color: bodyColor }));
+      top.position.y = carH * 0.36;
+      carG.add(top);
+      // 车窗带（夜间点亮）
+      const win = new T.Mesh(new T.BoxGeometry(carL - 0.18, 0.09, carW - 0.1), winMat);
+      win.position.y = carH * 0.52;
+      win.userData.night = true;
+      carG.add(win); nightMats.push(win);
+      // 腰线（线路色）
+      const stripe = new T.Mesh(new T.BoxGeometry(carL - 0.06, 0.055, carW - 0.03), new T.MeshLambertMaterial({ color: lineCol }));
+      stripe.position.y = carH * 0.16;
+      carG.add(stripe);
+      // 车门（每侧 4 扇）
+      for (const side of [-1, 1]) {
+        for (let d = 0; d < 4; d++) {
+          const dx = -carL / 2 + carL * (d + 0.5) / 4;
+          const panel = new T.Mesh(new T.BoxGeometry(0.16, 0.21, 0.008), doorMat);
+          panel.position.set(dx, -0.1, side * (carW / 2 - 0.005));
+          panel.userData = { side, baseZ: side * (carW / 2 - 0.005), car: c };
+          carG.add(panel);
+          if (!opts.ai && !opts.parked) doorPanels.push(panel);
+        }
+      }
+      // 车底裙板（单轨包梁 / 钢轮裙板）
+      for (const side of [-1, 1]) {
+        const skirt = new T.Mesh(new T.BoxGeometry(carL - 0.12, mono ? 0.34 : 0.16, 0.018), skirtMat);
+        skirt.position.set(0, mono ? -0.06 : -0.09, side * (carW / 2 - 0.06));
+        carG.add(skirt);
+      }
+      // 转向架
+      if (mono) {
+        for (const t of [-1, 1]) {
+          const bogie = new T.Mesh(new T.BoxGeometry(0.14, 0.16, carW * 0.42), skirtMat);
+          bogie.position.set(t * carL * 0.28, -0.12, 0);
+          carG.add(bogie);
+        }
+      } else {
+        for (const t of [-1, 1]) {
+          const bogie = new T.Mesh(new T.BoxGeometry(0.2, 0.07, carW * 0.8), skirtMat);
+          bogie.position.set(t * carL * 0.3, -0.12, 0);
+          carG.add(bogie);
+        }
+      }
+      // 受电弓（钢轮线路：2、5 车）
+      if (!mono && ((c === 1 || c === 4) && cars > 4 || (cars <= 4 && c === 1))) {
+        const pg = new T.Group();
+        pg.position.set(carL * 0.12, carH * 0.66, 0);
+        const arm1 = new T.Mesh(new T.BoxGeometry(0.02, 0.05, 0.3), skirtMat);
+        arm1.position.set(0, 0.05, 0); arm1.rotation.z = 0.5;
+        const arm2 = new T.Mesh(new T.BoxGeometry(0.02, 0.05, 0.3), skirtMat);
+        arm2.position.set(0.12, 0.12, 0); arm2.rotation.z = -0.5;
+        const bar = new T.Mesh(new T.BoxGeometry(0.32, 0.014, 0.014), new T.MeshLambertMaterial({ color: 0x22282e }));
+        bar.position.set(0.12, 0.155, 0);
+        pg.add(arm1, arm2, bar);
+        carG.add(pg);
+      }
+      // 车厢内部（乘客视角车，2 车）
+      if (!opts.ai && !opts.parked && c === 1) this._buildInterior(carG, carL, carW, carH, opts);
+      // 司机室（1 车 / 末车）
+      if (!opts.ai && !opts.parked && (c === 0 || c === cars - 1)) {
+        this._buildCab(carG, c === 0, carL, carW, carH, opts);
+      }
+      g.add(carG);
+      opts._cars = opts._cars || []; opts._cars.push(carG);
+    }
+    // 车钩
+    for (let c = 0; c < cars - 1; c++) {
+      const coupler = new T.Mesh(new T.BoxGeometry(0.05, 0.07, 0.07), new T.MeshLambertMaterial({ color: 0x1a1e22 }));
+      coupler.position.set(-totalL / 2 + carL * (c + 1), rideY - 0.02, 0);
+      g.add(coupler);
+    }
+    // 车头：前鼻 + 挡风 + 前照灯 / 尾部红灯
+    const mkEnd = (front) => {
+      const nose = new T.Group();
+      const ex = front ? -totalL / 2 : totalL / 2;
+      const dir = front ? -1 : 1;
+      for (let i = 0; i < 3; i++) {
+        const frac = 0.1 - i * 0.032;
+        const nb = new T.Mesh(new T.BoxGeometry(0.14, carH * (0.82 - i * 0.14), carW * (0.94 - i * 0.18)), new T.MeshLambertMaterial({ color: bodyColor }));
+        nb.position.set(ex + dir * (0.05 + i * 0.13), rideY + carH * 0.06, 0);
+        nose.add(nb);
+      }
+      const ws = new T.Mesh(new T.PlaneGeometry(carW * 0.72, carH * 0.3), winMat);
+      ws.position.set(ex + dir * 0.2, rideY + carH * 0.52, 0);
+      ws.rotation.y = front ? -Math.PI / 2 + 0.22 : Math.PI / 2 - 0.22;
+      nose.add(ws);
+      // 前照灯 / 尾灯
+      const lampG = new T.Group();
+      for (const s of [-1, 1]) {
+        const lamp = new T.Mesh(new T.BoxGeometry(0.012, 0.03, 0.03), new T.MeshBasicMaterial({ color: front ? 0xfff6d8 : 0x581015 }));
+        lamp.position.set(ex + dir * 0.25, rideY + carH * 0.16, s * carW * 0.3);
+        lamp.userData.night = true;
+        lamp.userData.isHead = front;
+        lamp.userData.baseCol = front ? 0xfff6d8 : 0x581015;
+        lampG.add(lamp); nightMats.push(lamp);
+      }
+      nose.add(lampG);
+      g.add(nose);
+      if (front && !opts.ai && !opts.parked) {
+        const spot1 = new T.SpotLight(0xfff2cc, 60, 110, 0.5, 0.5, 1.6);
+        spot1.position.set(ex + dir * 0.2, rideY + carH * 0.4, carW * 0.28);
+        spot1.target.position.set(ex + dir * 12, rideY + 0.1, carW * 0.28);
+        const spot2 = spot1.clone(); spot2.position.z = -carW * 0.28; spot2.target.position.z = -carW * 0.28;
+        g.add(spot1, spot1.target, spot2, spot2.target);
+        opts.headlights = [spot1, spot2];
+      }
+    };
+    mkEnd(true); mkEnd(false);
+    return { group: g, doorPanels, nightMats, opts, cars, carL, totalL, rideY, mono, SP };
+  }
+  _buildInterior(carG, carL, carW, carH, opts) {
+    const T = this.T;
+    // 地板 + 顶
+    const floor = new T.Mesh(new T.BoxGeometry(carL - 0.1, 0.02, carW - 0.3), new T.MeshLambertMaterial({ color: 0x8a9198 }));
+    floor.position.y = 0.02;
+    const ceil = new T.Mesh(new T.BoxGeometry(carL - 0.1, 0.015, carW - 0.3), new T.MeshLambertMaterial({ color: 0xd8dde2 }));
+    ceil.position.y = carH * 0.78;
+    carG.add(floor, ceil);
+    // 座椅（两排）
+    const seatGeo = new T.BoxGeometry(0.09, 0.05, 0.1);
+    const seatMat = new T.MeshLambertMaterial({ color: 0x3f7cb0 });
+    for (let k = 0; k < 10; k++) {
+      for (const side of [-1, 1]) {
+        const seat = new T.Mesh(seatGeo, seatMat);
+        seat.position.set(-carL / 2 + 0.18 + k * (carL - 0.36) / 9, 0.05, side * (carW / 2 - 0.22));
+        seat.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+        carG.add(seat);
+      }
+    }
+    // 立柱 + 扶手
+    const poleGeo = new T.CylinderGeometry(0.006, 0.006, carH * 0.7, 6);
+    const poleMat = new T.MeshLambertMaterial({ color: 0xcfd4d8 });
+    for (let k = 0; k < 6; k++) {
+      const pole = new T.Mesh(poleGeo, poleMat);
+      pole.position.set(-carL / 2 + 0.3 + k * (carL - 0.6) / 5, carH * 0.4, 0);
+      carG.add(pole);
+    }
+    // 车内 LED 信息屏（实时更新）
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+    const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace;
+    const led = new T.Mesh(new T.PlaneGeometry(0.24, 0.06), new T.MeshBasicMaterial({ map: tex }));
+    led.position.set(0, carH * 0.62, carW / 2 - 0.18);
+    led.rotation.y = -Math.PI / 2;
+    carG.add(led);
+    opts.interiorLED = { canvas: cv, ctx: cv.getContext('2d'), mesh: led };
+  }
+  _buildCab(carG, front, carL, carW, carH, opts) {
+    const T = this.T;
+    const cabG = new T.Group();
+    const ex = front ? -carL / 2 + 0.05 : carL / 2 - 0.05;
+    cabG.position.set(ex, 0, 0);
+    if (!front) cabG.rotation.y = Math.PI;
+    // 司机台
+    const desk = new T.Mesh(new T.BoxGeometry(0.14, 0.09, carW * 0.62), new T.MeshLambertMaterial({ color: 0x2b323a }));
+    desk.position.set(front ? 0.12 : -0.12, 0.09, 0);
+    cabG.add(desk);
+    // 屏幕（DMI + 时刻表，画布纹理实时刷新）
+    for (const [i, kind] of [[0, 'dmi'], [1, 'sched']]) {
+      const cv = document.createElement('canvas');
+      cv.width = kind === 'dmi' ? 256 : 128; cv.height = 128;
+      const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace;
+      const scr = new T.Mesh(new T.PlaneGeometry(kind === 'dmi' ? 0.2 : 0.1, 0.1), new T.MeshBasicMaterial({ map: tex }));
+      scr.position.set(front ? 0.15 : -0.15, 0.16, (i === 0 ? -1 : 1) * carW * 0.16);
+      scr.rotation.y = front ? Math.PI / 2 + (i === 0 ? -0.35 : 0.35) : -Math.PI / 2 + (i === 0 ? 0.35 : -0.35);
+      cabG.add(scr);
+      if (front) {
+        opts.cabScreens = opts.cabScreens || {};
+        opts.cabScreens[kind] = { canvas: cv, ctx: cv.getContext('2d'), mesh: scr };
+      }
+    }
+    // 主手柄（牵引/制动联动杆，动画用）
+    const leverPivot = new T.Group();
+    leverPivot.position.set(front ? 0.12 : -0.12, 0.12, carW * 0.1);
+    const lever = new T.Mesh(new T.BoxGeometry(0.018, 0.1, 0.018), new T.MeshLambertMaterial({ color: 0xd8dde2 }));
+    lever.position.y = 0.05;
+    leverPivot.add(lever);
+    cabG.add(leverPivot);
+    if (front) opts.cabLever = { pivot: leverPivot, mesh: lever };
+    // 司机座椅
+    const chair = new T.Mesh(new T.BoxGeometry(0.08, 0.08, 0.08), new T.MeshLambertMaterial({ color: 0x223 }));
+    chair.position.set(front ? 0.24 : -0.24, 0.08, 0);
+    cabG.add(chair);
+    carG.add(cabG);
+    opts.cabView = { car: carG, local: new T.Vector3(front ? -carL / 2 + 0.3 : carL / 2 - 0.3, carH * 0.5, 0) };
+  }
+
+  /* ---------- 信号机（简易三显闭塞） ---------- */
+  _buildSignals() {
+    const T = this.T;
+    const every = Math.max(2, Math.floor(this.stationIdx.length / 4));
+    const put = (idx, track) => {
+      const samples = track === 'A' ? this.samples : this.trackB;
+      const i = clamp(idx - 30, 0, samples.length - 1);
+      const p = samples[i];
+      const g = new T.Group();
+      const mast = new T.Mesh(new T.CylinderGeometry(0.02, 0.02, 0.5, 6), new T.MeshLambertMaterial({ color: 0x9aa4ad }));
+      mast.position.y = 0.25;
+      g.add(mast);
+      const head = new T.Mesh(new T.BoxGeometry(0.045, 0.14, 0.03), new T.MeshLambertMaterial({ color: 0x11151a }));
+      head.position.y = 0.52;
+      g.add(head);
+      const lamps = {};
+      [['g', 0x0f3], ['y', 0xff0], ['r', 0xf00]].forEach(([k, col], li) => {
+        const m = new T.Mesh(new T.SphereGeometry(0.008, 8, 8), new T.MeshBasicMaterial({ color: 0x202020 }));
+        m.position.set(0, 0.52 + (1 - li) * 0.042, 0.017);
+        m.userData.lampCol = new T.Color(col);
+        g.add(m);
+        lamps[k] = m;
+      });
+      g.position.set(p.x, p.y, p.z);
+      g.rotation.y = -Math.atan2(p.tanZ, p.tanX);
+      this.group.add(g);
+      this.signals.push({ s: p.cum, track, obj: g, lamps, idx: i });
+    };
+    for (let k = 0; k < this.stationIdx.length; k += every) put(this.stationIdx[k].idx, 'A');
+    for (let k = 0; k < this.stationIdx.length; k += every) {
+      const iB = this.samples.length - 1 - Math.max(0, this.stationIdx[k].idx - 30);
+      put(iB, 'B');
+    }
+  }
+
+  /* ---------- AI 列车 ---------- */
+  _buildAITrains() {
+    const nA = clamp(Math.round(this.totalLen * U10 / 9500), 1, 3);
+    const nB = this.line.loops ? 2 : 1;
+    const mk = (track, k, n) => {
+      const tr = this._buildTrain({ ai: true });
+      tr.track = track;
+      tr.state = 'run'; tr.v = 0; tr.dwellT = 0; tr.targetSt = 0; tr.dir = 1;
+      tr.s = (this.totalLen * k / n) % this.totalLen;
+      tr.ai = true;
+      this.group.add(tr.group);
+      this.aiTrains.push(tr);
+      return tr;
+    };
+    for (let k = 0; k < nA; k++) mk('A', k + 0.3, nA);
+    for (let k = 0; k < nB; k++) mk('B', k + 0.6, nB);
+    // 终点站驻留车（非环线，停在站台外尾轨；B 线车头朝下行方向）
+    if (!this.line.loops) {
+      const lastSt = this.stationIdx[this.stationIdx.length - 1];
+      for (const [end, track] of [[Math.max(0, this.stationIdx[0].idx - 16), 'B'], [Math.min(this.samples.length - 1, lastSt.idx + 16), 'A']]) {
+        const tr = this._buildTrain({ ai: true, parked: true });
+        const base = this.samples[end];
+        const p = { x: base.x - base.tanZ * 0.46, z: base.z + base.tanX * 0.46, y: base.y };
+        const tA = this.samples[Math.max(0, end - 1)], tB2 = this.samples[Math.min(this.samples.length - 1, end + 1)];
+        tr.group.position.set(p.x, p.y, p.z);
+        tr.group.rotation.y = Math.PI - Math.atan2(tB2.z - tA.z, tB2.x - tA.x) + (track === 'B' ? Math.PI : 0);
+        this.group.add(tr.group);
+        this.parkedTrains = this.parkedTrains || [];
+        this.parkedTrains.push(tr);
+      }
+    }
+  }
+
+  /* ---------- 查询 ---------- */
+  _poseFrom(samples, s) {
+    const ss = samples, n = ss.length;
+    if (this.line.loops) s = ((s % this.totalLen) + this.totalLen) % this.totalLen;
+    s = clamp(s, 0, ss[n - 1].cum);
+    let a = 0, b = n - 1;
+    while (b - a > 1) { const m = (a + b) >> 1; (ss[m].cum < s) ? a = m : b = m; }
+    const A = ss[a], B = ss[b], t = (s - A.cum) / Math.max(1e-6, B.cum - A.cum);
+    return {
+      x: lerp(A.x, B.x, t), y: lerp(A.y, B.y, t), z: lerp(A.z, B.z, t),
+      tanX: lerp(A.tanX, B.tanX, t), tanZ: lerp(A.tanZ, B.tanZ, t),
+      grade: lerp(A.grade, B.grade, t), limit: lerp(A.limit, B.limit, t), cum: s,
+      bridge: A.bridge || B.bridge,
+    };
+  }
+  getPose(s, track = 'A') { return this._poseFrom(track === 'A' ? this.samples : this.trackB, s); }
+  getSample(i) { return this.samples[clamp(i, 0, this.samples.length - 1)]; }
+  dispose() {
+    this.group.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+          if (m.map) m.map.dispose();
+          m.dispose();
+        });
+      }
+    });
+    if (this.terrainMesh) this.terrainMesh.geometry.dispose();
+  }
+}
+
+/* ==========================================================================
+ * 四、列车仿真核心（动力学 / ATO / ATP / 车门 / 信号 / AI 列车 / 事件 / 评分）
+ * ========================================================================== */
+class Train {
+  constructor(world, opts = {}) {
+    this.world = world;
+    this.line = world.line;
+    this.track = opts.track || 'A';   // 上行 A 线 / 下行 B 线
+    this.SP = STOCK_PARAMS[world._stockKey()];
+    this.mass = this.SP.mass * 1000;
+    this.vmax = this.line.vmax / 3.6;
+    this.s = opts.s || 0; this.v = 0; this.a = 0; this.jerk = 0;
+    this.notchT = 0; this.notchB = 0; this.eb = false;
+    this.ato = CFG.atoDefault;
+    this.atoBraking = false; this.atoTracting = false;
+    this.doors = { L: false, R: false };
+    this.doorOpenAmt = 0; this.psdOpenAmt = 0;
+    this.doorState = 'closed';      // closed|opening|open|closing
+    this.state = 'idle';            // idle|ready|run|arriving|stop|departing|end
+    this.stops = opts.stops || [];  // 任务车站里程表
+    this.stopEffS = [];             // 环线展开里程
+    this.stopIdx = -1;              // 已停靠完成数
+    this.nextStopIdx = 0;
+    this.energy = 0; this.regenE = 0; this.dist = 0;
+    this.pax = opts.pax ?? 180;
+    this.faultLimit = null;         // 信号降级限速
+    this.redPassed = false;
+    this.ebCount = 0; this.jerkViol = 0; this.ruleViol = 0;
+    this.scores = [];               // 每站评分记录
+    this.delay = 0;
+    this.messages = [];
+    this.listeners = {};
+    this.horn = false;
+    this.plan = opts.plan || [];    // 计划时刻
+    this.curPlan = 0;
+    this.departT = 0;
+    this.rainPenalty = 1;
+    this._ov = false;
+    this.wrapCount = 0;
+    this.on('doorsClosed', () => {
+      if (this.state === 'stop' && !this.ato) { this.state = 'departing'; this._depT = 2.0; }
+    });
+  }
+  on(ev, fn) { (this.listeners[ev] = this.listeners[ev] || []).push(fn); }
+  emit(ev, data) { (this.listeners[ev] || []).forEach(fn => fn(data)); }
+  log(txt, cls = 'sys') { this.messages.unshift({ t: fmtClock(APP ? APP.clock : 0), txt, cls }); }
+
+  setATO(b) { this.ato = b; this.emit('mode', b); }
+  incTraction(d = 1) { this.notchT = clamp(this.notchT + d, 0, 4); this.notchB = 0; this.eb = false; }
+  incBrake(d = 1) { this.notchB = clamp(this.notchB + d, 0, 7); this.notchT = 0; }
+  release() { this.notchT = 0; this.notchB = 0; }
+  emergency() {
+    this.eb = true; this.notchT = 0; this.notchB = 7; this.ebCount++;
+    this.emit('eb');
+  }
+  resetEB() { this.eb = false; this.notchB = 0; }
+
+  /* ---------- 前方限速（静态 + 动态） ---------- */
+  _staticLimit(s) {
+    const ss = this.world.samples;
+    let a = 0, b = ss.length - 1;
+    while (b - a > 1) { const m = (a + b) >> 1; (ss[m].cum < s) ? a = m : b = m; }
+    return ss[clamp(a, 0, ss.length - 1)].limit;
+  }
+  _lookaheadLimit(s, horizon = 40) {
+    let lim = this.vmax;
+    const ss = this.track === 'B' ? this.world.trackB : this.world.samples;
+    const n = ss.length;
+    let a = 0, b = n - 1;
+    while (b - a > 1) { const m = (a + b) >> 1; (ss[m].cum < s) ? a = m : b = m; }
+    for (let i = a; i < Math.min(n, a + Math.floor(horizon / SAMPLE_STEP)); i++) {
+      lim = Math.min(lim, ss[i].limit);
+    }
+    if (this.faultLimit) lim = Math.min(lim, this.faultLimit);
+    return lim;
+  }
+  /* 展开里程（环线跨零点累计） */
+  effS() { return this.s + (this.line.loops ? this.wrapCount * this.world.totalLen : 0); }
+  /* 下一停车点（车站 / 红灯） */
+  _targetInfo() {
+    const next = this.nextStopIdx < this.stops.length ? this.stops[this.nextStopIdx] : null;
+    let stopS = next ? (this.stopEffS[this.nextStopIdx] !== undefined ? this.stopEffS[this.nextStopIdx] : next.s) : null;
+    let redS = null;
+    const sig = this._signalAhead();
+    if (sig && sig.sig.state === 'red') redS = this.effS() + sig.d;
+    return { stopS, redS };
+  }
+  _signalAhead() {
+    let best = null, bd = 1e9;
+    for (const sig of this.world.signals) {
+      if (sig.track !== this.track) continue;
+      let d = sig.s - this.s;
+      if (this.line.loops) { if (d < 0) d += this.world.totalLen; }
+      else if (d < 0) continue;
+      if (d < bd && d < 60) { bd = d; best = { sig, d }; }
+    }
+    return best;
+  }
+
+  /* ---------- ATO 控制 ---------- */
+  _atoControl(dt) {
+    const SP = this.SP;
+    const tgt = this._targetInfo();
+    const targets = [];
+    if (tgt.stopS !== null) targets.push(tgt.stopS);
+    if (tgt.redS !== null) targets.push(tgt.redS);
+    const stopAt = targets.length ? Math.min(...targets) : null;
+    let vCmd = this._lookaheadLimit(this.s);
+    if (stopAt !== null) {
+      const d = stopAt - this.effS();
+      if (d < 120) {
+        const vBrake = Math.sqrt(2 * SP.brakeSvc * 0.62 * Math.max(0, d) * U10);   // 0.62 系数预留冲击率建立余量
+        vCmd = Math.min(vCmd, vBrake);
+      }
+      // 末段位置伺服：速度与剩余距离成比例，保证精准对标
+      if (d < 2.5) vCmd = Math.min(vCmd, Math.max(0.15, 0.55 * Math.max(0, d)));
+      if (d < 0.4 && this.v < 0.4) vCmd = 0;
+    }
+    // 进站前把速度压到 0 附近
+    if (stopAt !== null && stopAt - this.effS() < 0.5) vCmd = 0;
+    // 速率限制 vCmd（冲击率）
+    const maxDv = SP.jerk * dt;
+    this._vCmd = clamp(vCmd, 0, this.vmax);
+    const dv = this._vCmd - this.v;
+    let aCmd = clamp(dv / dt, -SP.brakeSvc * 0.9, SP.aMax * 0.95);
+    aCmd = clamp(aCmd, this.a - maxDv, this.a + maxDv);
+    // 到站停车：精确对准
+    if (stopAt !== null) {
+      const d = stopAt - this.effS();
+      if (d < 0.4) aCmd = Math.max(aCmd, -0.9 * SP.brakeSvc);
+      if (d < 0.06 && this.v < 0.25) aCmd = -this.v / dt;   // 停车钳
+    }
+    this._aCmd = aCmd;
+    // 映射到手柄显示
+    if (aCmd > 0.02) { this.notchT = clamp(Math.ceil(aCmd / SP.aMax * 4), 1, 4); this.notchB = 0; this.atoBraking = false; this.atoTracting = true; }
+    else if (aCmd < -0.02) { this.notchB = clamp(Math.ceil(-aCmd / SP.brakeSvc * 7), 1, 7); this.notchT = 0; this.atoBraking = true; this.atoTracting = false; }
+    else { this.notchT = 0; this.notchB = 0; this.atoBraking = this.atoTracting = false; }
+  }
+
+  /* ---------- 物理积分 ---------- */
+  _physics(dt) {
+    const SP = this.SP;
+    const g = 9.81;
+    const pose = this.world.getPose(this.s, this.track);
+    const grade = pose.grade / 1000;
+    const resAcc = (SP.davis[0] + SP.davis[1] * this.v + SP.davis[2] * this.v * this.v) * g / 1000;
+    let aTarget = -resAcc - grade * g;
+    const wet = this.rainPenalty;   // 雨湿轨
+    const aMax = SP.aMax * wet, aSvc = SP.brakeSvc * wet;
+    if (this.eb) {
+      aTarget -= SP.brakeEB * wet;
+    } else if (this.ato) {
+      aTarget = this._aCmd;
+    } else {
+      if (this.notchT > 0 && this.v < this.vmax * 0.999) {
+        const frac = [0, 0.22, 0.45, 0.7, 1.0][this.notchT];
+        const fade = Math.max(0.25, 1 - Math.pow(this.v / this.vmax, 1.7));
+        aTarget += aMax * frac * fade;
+      }
+      if (this.notchB > 0) {
+        aTarget -= aSvc * (this.notchB / 7);
+      }
+      // ATP 超速干预
+      const lim = this._lookaheadLimit(this.s);
+      if (this.v > lim + 2.5) {
+        aTarget -= Math.min(SP.brakeEB, (this.v - lim) * 0.6);
+        this.emit('atp');
+      }
+      if (this.v > lim + 7) { this.emergency(); }
+    }
+    // 车门联锁：开门状态下禁止牵引
+    if (this.doorState !== 'closed' && aTarget > -0.1) aTarget = -0.2;
+    // 冲击率限制
+    const maxJ = (this.eb ? SP.jerkEB : SP.jerk);
+    const da = clamp(aTarget - this.a, -maxJ * dt, maxJ * dt);
+    this.a += da;
+    const prevV = this.v;
+    this.v = Math.max(0, this.v + this.a * dt);
+    const ds = (prevV + this.v) / 2 * dt;
+    const prevS = this.s;
+    this.s += ds / U10;   // 里程单位换算（1 单位 = 10 米）
+    if (this.line.loops) {
+      if (this.s - prevS < -this.world.totalLen / 2) this.wrapCount++;   // 正向越过里程零点
+      this.s = ((this.s % this.world.totalLen) + this.world.totalLen) % this.world.totalLen;
+    }
+    this.dist += ds;
+    // 冲动率统计
+    if (Math.abs(this.a) > 0.85 && Math.abs(this.a) > SP.aMax * 0.9) this.jerkViol += dt;
+    // 能耗 / 再生
+    if (this.a > 0.03 && this.v > 0.3) this.energy += this.a * this.mass * this.v * dt / 3.6e6;   // kWh
+    if (this.a < -0.03 && this.v > 0.8) {
+      const P = Math.min(-this.a * this.mass * this.v, 1.8e6);
+      this.regenE += P * dt * 0.72 / 3.6e6;
+    }
+    this.energy += 0.0005 * 0.5 * dt / 3.6;  // 辅助负载
+  }
+
+  /* ---------- 车门 / 屏蔽门 ---------- */
+  openDoors(side = 'L') {
+    if (this.v > 0.4) { this.log('车速过高，禁止开门', 'fail'); return false; }
+    this.doors[side] = true; this.doorState = 'opening';
+    this.emit('doors', { open: true, side });
+    AUD.doorChime('open');
+    return true;
+  }
+  closeDoors() {
+    this.doors.L = this.doors.R = false; this.doorState = 'closing';
+    AUD.doorChime('close');
+    ANN.speak(ANNOUNCE.doorsClose, false);
+    this.emit('doors', { open: false, side: 'L' });
+  }
+  _doorAnim(dt) {
+    const target = (this.doorState === 'opening' || this.doorState === 'open') ? 1 : 0;
+    const spd = this.doorState === 'opening' || this.doorState === 'closing' ? 1.6 : 0;
+    if (this.doorState === 'opening' && this.doorOpenAmt >= 0.98) this.doorState = 'open';
+    if (this.doorState === 'closing' && this.doorOpenAmt <= 0.02) { this.doorState = 'closed'; this.emit('doorsClosed'); }
+    this.doorOpenAmt = clamp(this.doorOpenAmt + (target - this.doorOpenAmt) * Math.min(1, spd * dt * 6), 0, 1);
+    this.psdOpenAmt = this.doorOpenAmt;
+  }
+
+  /* ---------- 车站流程 ---------- */
+  _stationFlow(dt, app) {
+    const next = this.nextStopIdx < this.stops.length ? this.stops[this.nextStopIdx] : null;
+    if (!next) { this.state = 'end'; this.emit('tripEnd'); return; }
+    let dStop = (this.stopEffS[this.nextStopIdx] !== undefined ? this.stopEffS[this.nextStopIdx] : next.s) - this.effS();
+    const nearOK = dStop < 0.6 && dStop > -1.6;   // 允许轻微越位后触发对标
+    switch (this.state) {
+      case 'run': {
+        if (nearOK && this.v < 0.5) {
+          this.v = 0; this.a = 0;
+          this.state = 'arriving';
+          const err = dStop * 10;
+          this.s = next.s;
+          this.emit('arrive', { st: next, err });
+          this.dwellT = (this.dwellBase || 26) + Math.random() * 6 + (this._dwellExtra || 0);
+          this._dwellExtra = 0;
+          this.arriveErr = err;
+          this._ov = false;
+        } else if (Math.abs(dStop) < 0.55 && this.v > 2 && !this._ov) {
+          this._ov = true;
+          this.emit('overrun');   // 提示
+        }
+        break;
+      }
+      case 'arriving': {
+        // 到达即开门（ATO 自动；人工模式由司机操作）；里程对齐到站台（含跨零点圈数对账）
+        const targetS = ((this.stopEffS[this.nextStopIdx] % this.world.totalLen) + this.world.totalLen) % this.world.totalLen;
+        if (this.line.loops) this.wrapCount = Math.round((this.stopEffS[this.nextStopIdx] - targetS) / this.world.totalLen);
+        this.s = targetS;
+        if (this.ato && this.doorState === 'closed') this.openDoors('L');
+        this.state = 'stop'; this._stopT = 0;
+        break;
+      }
+      case 'stop': {
+        this._stopT = (this._stopT || 0) + dt;
+        if (this.ato) {
+          this.dwellT -= dt;
+          if (this.dwellT <= 0) {
+            if (this.doorState !== 'closed') this.closeDoors();
+            this.state = 'departing';
+            this._depT = 2.2;
+          }
+        }
+        break;
+      }
+      case 'departing': {
+        this._depT -= dt;
+        if (this._depT <= 0) {
+          if (this.nextStopIdx >= this.stops.length - 1) {
+            this.state = 'end';
+            this.emit('tripEnd');
+          } else {
+            this.state = 'run';
+            this.stopIdx = this.nextStopIdx;
+            this.nextStopIdx++;
+            this._ov = false;
+            this.emit('depart');
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  /* ---------- 红灯防护（只判前方） ---------- */
+  _signalCheck() {
+    for (const sig of this.world.signals) {
+      if (sig.track !== this.track) continue;
+      let d = sig.s - this.s;
+      if (this.line.loops) { d = ((d % this.world.totalLen) + this.world.totalLen) % this.world.totalLen; if (d > this.world.totalLen / 2) continue; }
+      else if (d < 0) continue;
+      if (d < 0.35 && sig.state === 'red' && this.v > 0.5) {
+        if (!this.redPassed) {
+          this.redPassed = true;
+          this.ruleViol += 1;
+          this.emergency();
+          this.emit('redLight');
+        }
+      }
+    }
+  }
+
+  /* ---------- 每帧更新 ---------- */
+  step(dt, app) {
+    if (app.paused) return;
+    this._doorAnim(dt);
+    if (this.state === 'idle') return;
+    if (this.state === 'end') return;
+    if (this.ato) this._atoControl(dt);
+    this._physics(dt);
+    this._signalCheck();
+    // 非环线终点护栏
+    if (!this.line.loops && this.s >= this.world.totalLen - 0.05) {
+      this.s = this.world.totalLen - 0.05; this.v = 0; this.a = 0;
+      if (this.state === 'run') { this.state = 'end'; this.emit('tripEnd'); }
+    }
+    this._stationFlow(dt, app);
+    // 列车姿态（车头位于局部 -X，前进方向映射到线路切线）
+    const pose = this.world.getPose(this.s, this.track);
+    const g = this.visual.group;
+    g.position.set(pose.x, pose.y + this.visual.rideY, pose.z);
+    g.rotation.y = Math.PI - Math.atan2(pose.tanZ, pose.tanX) + (this.track === 'B' ? Math.PI : 0);
+    // 车门动画
+    for (const p of this.visual.doorPanels) {
+      const open = this.doors.L || this.doors.R;
+      p.position.z = p.userData.baseZ + p.userData.side * this.doorOpenAmt * 0.05;
+    }
+    // 手柄动画
+    if (this.visual.opts.cabLever) {
+      const frac = this.notchT / 4 - this.notchB / 7;
+      this.visual.opts.cabLever.pivot.rotation.x = -frac * 0.9;
+    }
+    return pose;
+  }
+}
+
+/* ---------- AI 列车控制器 ---------- */
+class AIController {
+  constructor(world, train) {
+    this.world = world; this.tr = train;
+    this.dwell = 0; this.state = 'run';
+    // 里程正方向（B 线里程已镜像，无需反向）
+    const sts = world.stationIdx;
+    this.sts = train.track === 'B'
+      ? sts.map(s => ({ ...s, s: world.totalLen - s.s })).sort((a, b) => a.s - b.s)
+      : sts;
+  }
+  update(dt, player) {
+    const tr = this.tr, w = this.world;
+    const sts = this.sts, L = sts.length;
+    // 选择前方最近车站
+    let best = -1, bd = 1e9;
+    for (let i = 0; i < L; i++) {
+      let d = sts[i].s - tr.s;
+      if (w.line.loops) { if (d < 0) d += w.totalLen; }
+      if (d > -0.1 && d < bd) { bd = d; best = i; }
+    }
+    if (best < 0) {  // 已越过端点：就近停靠并折返
+      let near = 0, nd = 1e18;
+      for (let i = 0; i < L; i++) { const dd = Math.abs(sts[i].s - tr.s); if (dd < nd) { nd = dd; near = i; } }
+      best = near; bd = 0;
+    }
+    const cur = sts[best];
+    let d = bd;
+    if (this.state === 'run') {
+      if (d <= 0.4) { tr.s = cur.s; tr.v = 0; this.state = 'dwell'; this.dwell = 18 + Math.random() * 20; }
+      else {
+        // 与前车保持间隔（同轨）
+        let gapLim = 1e9;
+        if (tr.track === (player && player.track) && player && player.state !== 'idle') {
+          let gap = player.s - tr.s;
+          if (w.line.loops) { if (gap < 0) gap += w.totalLen; }
+          if (gap > 0.1 && gap < 45) gapLim = gap * 0.6;
+        }
+        const vCmd = Math.min(tr.vmax * 0.92, gapLim, d < 110 ? Math.sqrt(2 * 0.8 * Math.max(0, d) * U10) : 1e9);
+        const aCmd = clamp((vCmd - tr.v) * 0.8, -1.0, 0.8);
+        tr.v = Math.max(0, tr.v + aCmd * dt);
+        tr.s += tr.v * dt / U10;
+        if (w.line.loops) tr.s = ((tr.s % w.totalLen) + w.totalLen) % w.totalLen;
+      }
+    } else {
+      this.dwell -= dt;
+      if (this.dwell <= 0) {
+        this.state = 'run';
+        // 非环线：到端点后折返（等效出入库/折返作业）
+        if (!w.line.loops && best >= L - 1) tr.s = 0.02;
+      }
+    }
+    const pose = w.getPose(tr.s, tr.track);
+    tr.group.position.set(pose.x, pose.y + tr.rideY, pose.z);
+    tr.group.rotation.y = Math.PI - Math.atan2(pose.tanZ, pose.tanX) + (tr.track === 'B' ? Math.PI : 0);
+  }
+}
+
+/* ---------- 信号机状态 ---------- */
+function updateSignals(world, trains, player) {
+  for (const sig of world.signals) {
+    let state = 'green';
+    for (const tr of world.aiTrains) {
+      if (tr.track !== sig.track) continue;
+      let d = tr.s - sig.s;
+      if (world.line.loops) { if (d < 0) d += world.totalLen; }
+      if (d > 0 && d < 60) state = 'red';
+      else if (d > 0 && d < 120 && state !== 'red') state = 'yellow';
+    }
+    if (sig.track === player.track && player && player.state !== 'idle') {
+      let d = player.s - sig.s;
+      if (world.line.loops) { if (d < 0) d += world.totalLen; }
+      if (d > 0 && d < 60) state = 'red';
+    }
+    sig.state = state;
+    for (const [k, lamp] of Object.entries(sig.lamps)) {
+      lamp.material.color.set(state === k ? lamp.userData.lampCol : new THREE.Color(0x202020));
+    }
+  }
+}
+
+/* ---------- 事件系统（故障演练） ---------- */
+class EventSystem {
+  constructor(app) { this.app = app; this.active = null; this.timer = 60 + Math.random() * 60; this.enabled = false; }
+  reset() { this.active = null; this.timer = 90 + Math.random() * 90; }
+  update(dt) {
+    if (!this.enabled) return;
+    if (this.active) return;
+    if (this.app.train.state !== 'run') return;
+    this.timer -= dt;
+    if (this.timer <= 0) {
+      this.timer = 120 + Math.random() * 120;
+      const roll = Math.random();
+      if (roll < 0.38) this._doorFault();
+      else if (roll < 0.72) this._atpDegrade();
+      else this._medical();
+    }
+  }
+  _doorFault() {
+    const tr = this.app.train;
+    this.active = { type: 'door', title: '车门夹物报警', desc: '车门防夹装置动作！请按下「重新开门」按钮，确认无障碍物后再次关门发车。', resolved: false };
+    this.app.showEvent(this.active);
+    AUD.beep(880, 0.15); AUD.beep(880, 0.15);
+  }
+  _atpDegrade() {
+    const tr = this.app.train;
+    tr.faultLimit = 25 / 3.6;
+    this.active = { type: 'atp', title: 'ATP 降级', desc: '信号设备故障，列车已进入 25 km/h 限速模式，将在下一站自动恢复。', resolved: false };
+    this.app.showEvent(this.active);
+    ANN.speak(ANNOUNCE.fault, false);
+  }
+  _medical() {
+    this.active = { type: 'medical', title: '乘客求助', desc: '车厢内有乘客身体不适，前方站需延长停站时间等待救护人员。', resolved: false };
+    this.app.showEvent(this.active);
+    ANN.speak(ANNOUNCE.medical, false);
+  }
+  resolve(kind) {
+    if (!this.active || this.active.type !== kind) return;
+    const tr = this.app.train;
+    if (kind === 'door') {
+      if (tr.v < 0.4) { tr.openDoors('L'); setTimeout(() => { if (tr.doorState !== 'closed') tr.closeDoors(); }, 4000); }
+      else this.app.toast('请先停车再处理车门故障');
+      this.active = null; this.app.hideEvent();
+    }
+  }
+  onStationArrive() {
+    if (!this.active) return;
+    const tr = this.app.train;
+    if (this.active.type === 'atp') {
+      tr.faultLimit = null;
+      this.active = null; this.app.hideEvent();
+      this.app.toast('信号恢复正常，限速解除');
+    } else if (this.active.type === 'medical') {
+      tr._dwellExtra = (tr._dwellExtra || 0) + 30;
+      this.active = null; this.app.hideEvent();
+      this.app.toast('已安排救助，本站延长停站 30 秒');
+    }
+  }
+}
+
+/* ---------- 时刻表与评分 ---------- */
+function buildPlan(world, stops, effs, startT, scene) {
+  const dwellBase = scene === 'rush' ? 32 : scene === 'night' ? 22 : 26;
+  let t = startT;
+  const plan = stops.map((st, i) => {
+    const distM = i === 0 ? 0 : (effs[i] - effs[i - 1]) * 10;
+    const cruise = world.line.vmax / 3.6 * 0.62;
+    t += i === 0 ? 0 : (distM / cruise) + dwellBase + Math.random() * 6;
+    return { name: st.name, t };
+  });
+  return plan;
+}
+
+/* ==========================================================================
+ * 五、应用主程序（渲染 / 场景 / 相机 / 输入 / 主循环）
+ * ========================================================================== */
+const AUD = new SoundEngine();
+const ANN = new Announcer();
+let APP = null;
+
+class App {
+  constructor(THREE) {
+    this.T = THREE;
+    APP = this;
+    window.APP = this;   // 供内联 onclick 使用
+    this.world = null;
+    this.train = null;
+    this.aiCtl = [];
+    this.events = new EventSystem(this);
+    this.viewIdx = 0;
+    this.weather = 'clear';
+    this.fogBoost = 1;
+    this.clock = 10 * 3600;      // 10:00
+    this.paused = false;
+    this.lightsOn = false;
+    this.tripActive = false;
+    this.sceneCfg = null;
+    this.orbit = { theta: 0.6, phi: 0.9, r: 30, target: new THREE.Vector3() };
+    this.mouse = { down: false, x: 0, y: 0 };
+    this.rainPoints = null;
+    this.hornHeld = false;
+    this._hudAcc = 0; this._dmiAcc = 0; this._mapAcc = 0; this._sigAcc = 0;
+    this._prevJerk = 0;
+    this.lastFrame = performance.now();
+    this.fpsAcc = 0; this.fpsN = 0;
+  }
+
+  /* ---------- 渲染器 / 场景 ---------- */
+  init() {
+    const T = this.T;
+    this.renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.outputColorSpace = T.SRGBColorSpace;
+    document.getElementById('stage').appendChild(this.renderer.domElement);
+    this.scene = new T.Scene();
+    this.camera = new T.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.05, 4200);
+    this.camera.position.set(40, 20, 60);
+    // 灯光
+    this.hemi = new T.HemisphereLight(0xbfd8ea, 0x4a5240, 0.95);
+    this.scene.add(this.hemi);
+    this.sun = new T.DirectionalLight(0xfff2dd, 1.5);
+    this.sun.position.set(160, 140, 60);
+    this.scene.add(this.sun);
+    this.amb = new T.AmbientLight(0x223344, 0.35);
+    this.scene.add(this.amb);
+    // 雨
+    this._buildRain();
+    // UI
+    this._buildLineList();
+    this._bindUI();
+    this._bindKeys();
+    this._applyClock();
+    this.loadLine(LINES[1].id);   // 默认 2 号线（最经典）
+    $('loading').classList.add('hidden');
+    this.toast('欢迎乘坐重庆轨道交通！请选择线路与任务后点击「发车」');
+    if (location.search.includes('autotest')) this._autotest();
+    requestAnimationFrame(t => this._loop(t));
+  }
+  /* 自动化冒烟测试钩子（仅 ?autotest 启用；autotest=down/loop 变体） */
+  _autotest() {
+    const variant = new URLSearchParams(location.search).get('autotest') || 'up';
+    if (variant === 'loop') {
+      // 环线全程测试
+      this.loadLine('LOOP');
+    }
+    $('selMode').value = 'ato'; $('selScene').value = 'normal'; $('selStart').value = '0';
+    if (variant === 'down') { $('selDir').value = '-1'; $('selStart').value = String(this.world.stations.length - 1); }
+    const selEnd = $('selEnd');
+    if (variant === 'down') selEnd.value = '0';
+    if (variant === 'loop') { $('selDir').value = '-1'; $('selStart').value = '10'; selEnd.value = '10'; }
+    this.startTask();
+    // 手动驱动仿真核心（绕过无头模式 rAF 节流），每 tick 推进 2 秒仿真时间
+    let simT = 0, sigAcc = 0;
+    const tick = () => {
+      for (let i = 0; i < 40; i++) {
+        const dt = 0.05;
+        this.train.step(dt, this);
+        for (const ctl of this.aiCtl) ctl.update(dt, this.train);
+        sigAcc += dt;
+        if (sigAcc > 0.5) { sigAcc = 0; updateSignals(this.world, this.world.aiTrains, this.train); }
+        simT += dt;
+      }
+      console.log('AUTOTEST', JSON.stringify({
+        t: +simT.toFixed(0), s: +this.train.s.toFixed(2), v: +(this.train.v * 3.6).toFixed(1),
+        state: this.train.state, stop: this.train.nextStopIdx, served: this.train.stopIdx,
+        door: this.train.doorState, eb: this.train.eb, red: this.train.redPassed,
+        sts: this.world.stationIdx.slice(0, 4).map(s => s.name + ':' + (+s.s).toFixed(1)),
+        effs: this.train.stopEffS.slice(0, 4).map(x => +x.toFixed(1))
+      }));
+      if (simT < 5400 && this.train.state !== 'end') setTimeout(tick, 0);
+      else console.log('AUTOTEST-DONE', this.train.state, this.train.stopIdx, this.train.stops.length);
+    };
+    setTimeout(tick, 0);
+  }
+
+  _buildRain() {
+    const T = this.T, n = 2400;
+    const geo = new T.BufferGeometry();
+    const pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - 0.5) * 500; pos[i * 3 + 1] = Math.random() * 90; pos[i * 3 + 2] = (Math.random() - 0.5) * 500; }
+    geo.setAttribute('position', new T.BufferAttribute(pos, 3));
+    const mat = new T.PointsMaterial({ color: 0x9fc0d8, size: 0.55, transparent: true, opacity: 0.55, depthWrite: false });
+    this.rainPoints = new T.Points(geo, mat);
+    this.rainPoints.visible = false;
+    this.scene.add(this.rainPoints);
+  }
+
+  /* ---------- 线路加载 ---------- */
+  loadLine(id) {
+    const line = LINES.find(l => l.id === id);
+    if (!line) return;
+    if (this.world) { this.scene.remove(this.world.group); this.world.dispose(); }
+    if (this.train && this.train.visual) {
+      const old = this.train.visual.group;
+      this.scene.remove(old);
+      old.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); });
+    }
+    this.world = new World(this.T, line, {});
+    this.scene.add(this.world.group);
+    this.scene.fog = new this.T.Fog(0x9db8cc, 60, 620);
+    // 玩家列车
+    const visual = this.world._buildTrain({});
+    this.scene.add(visual.group);
+    this.train = new Train(this.world, {});
+    this.train.visual = visual;
+    // AI
+    this.aiCtl = this.world.aiTrains.map(tr => new AIController(this.world, tr));
+    // 相机默认跟随
+    this.orbit.target.set(0, 5, 0);
+    this._fitOrbit();
+    this._updateLineInfo();
+    this._populateStations();
+    this._drawMinimap(true);
+    this.tripActive = false;
+    this._trainNo = null;
+    this.wiper = null;
+    this._wireTrain();
+    this.setWeather(this.weather);
+    this._applyClock();
+  }
+
+  _fitOrbit() {
+    const e = this.world.extent;
+    const w = e.maxX - e.minX, h = e.maxZ - e.minZ;
+    this.orbit.r = clamp(Math.max(w, h) * 0.62, 26, 260);
+    this.orbit.phi = 0.85;
+    this.orbit.target.set((e.minX + e.maxX) / 2, 4, (e.minZ + e.maxZ) / 2);
+  }
+
+  /* ---------- 任务 ---------- */
+  _currentStations() {
+    const idx = this.world.stationIdx;
+    const startI = parseInt($('selStart').value, 10);
+    const dir = parseInt($('selDir').value, 10);
+    const endI = parseInt($('selEnd').value, 10);
+    if (endI === startI && !this.world.line.loops) { this.toast('起点与终点相同，请重新选择', 'warn'); return null; }
+    const stops = [];
+    if (this.world.line.loops) {
+      if (endI === startI) {
+        // 全程一圈（回到起点）
+        for (let k = 0; k <= idx.length; k++) stops.push(idx[(startI + dir * k + idx.length) % idx.length]);
+      } else {
+        for (let k = 0; k <= idx.length; k++) {
+          const i = (startI + dir * k + idx.length) % idx.length;
+          stops.push(idx[i]);
+          if (k > 0 && i === endI) break;
+        }
+      }
+    } else {
+      const step = dir > 0 ? 1 : -1;
+      for (let i = startI; ; i += step) {
+        stops.push(idx[i]);
+        if (i === endI) break;
+        if ((step > 0 && i >= idx.length - 1) || (step < 0 && i <= 0)) break;
+      }
+      if (stops.length === 1) { this.toast('终点在起点后方，请检查方向', 'warn'); return null; }
+    }
+    return stops;
+  }
+  startTask() {
+    const scene = $('selScene').value;
+    const mode = $('selMode').value;
+    const dir = parseInt($('selDir').value, 10);
+    const stops = this._currentStations();
+    if (!stops) return;
+    this.sceneCfg = scene;
+    this.train.ato = mode === 'ato';
+    this.train.track = dir > 0 ? 'A' : 'B';
+    this.train.state = 'departing';
+    this.train._depT = 3.2;
+    this.train.nextStopIdx = 1;
+    this.train.stopIdx = 0;
+    this.train.stops = stops;
+    // 展开里程（B 线里程镜像：totalLen - s；环线跨零点累计）
+    const effs = []; let carry = 0, prevRaw = null;
+    stops.forEach((st, k) => {
+      const sT = this.train.track === 'B' ? this.world.totalLen - st.s : st.s;
+      if (this.world.line.loops) {
+        if (k && sT < prevRaw) carry++;   // 与上一站原始里程比较，避免同一圈重复进位
+        effs.push(sT + carry * this.world.totalLen);
+      } else {
+        effs.push(sT);
+      }
+      prevRaw = sT;
+    });
+    this.train.stopEffS = effs;
+    this.train.wrapCount = 0;
+    this.train.dwellBase = scene === 'rush' ? 32 : scene === 'night' ? 22 : 26;
+    this.train._dwellExtra = 0;
+    this.train.stopErrLog = [];
+    this.train.jerkViol = 0; this.train.ruleViol = 0; this.train.redPassed = false;
+    this.train.ebCount = 0; this.train.scores = [];
+    this.train.s = ((effs[0] % this.world.totalLen) + this.world.totalLen) % this.world.totalLen;
+    this.train.v = 0; this.train.a = 0; this.train.eb = false; this.train.faultLimit = null;
+    this.train.energy = 0; this.train.regenE = 0; this.train.dist = 0;
+    this.train.delay = 0;
+    this.train.pax = scene === 'rush' ? 520 : scene === 'night' ? 60 : 210;
+    this.train.departT = this.clock;
+    this.train.closeDoors();
+    this.train.doorOpenAmt = 0; this.train.doorState = 'closed';
+    // 场景时钟
+    if (scene === 'rush') this.clock = 8 * 3600 + 5 * 60;
+    else if (scene === 'night') this.clock = 22 * 3600 + 20 * 60;
+    else if (scene === 'drill') this.clock = 14 * 3600;
+    else this.clock = 10 * 3600 + Math.floor(Math.random() * 90) * 60;
+    // 时刻表
+    this.train.plan = buildPlan(this.world, stops, effs, this.clock, scene);
+    this.train.curPlan = 0;
+    this.events.enabled = scene === 'drill';
+    this.events.reset();
+    this.tripActive = true;
+    this.train.dwellT = 0;
+    this._trainNo = `${this.world.line.id}${dir}${String(Math.floor(Math.random() * 900) + 100)}次`;
+    $('nextStation').innerHTML = stops[1].name + '<small> · ' + (stops[1].note || '') + '</small>';
+    $('ann').textContent = '列车即将出发，请乘客站稳扶好';
+    this._renderTimetable();
+    $('msgLog').innerHTML = '';
+    this.train.log(`车次 ${this.trainNo()} 发车准备，值乘区间 ${stops[0].name} → ${stops[stops.length - 1].name}`, 'sys');
+    this.train.log(`模式：${this.train.ato ? 'ATO 自动驾驶' : '人工驾驶(ATP)'} | 场景：${$('selScene').selectedOptions[0].text}`, 'sys');
+    AUD.init();
+    ANN.speak(ANNOUNCE.welcome(this.world.line.short, stops[stops.length - 1].name) + ANNOUNCE.next(stops[1].name));
+    this.toast('发车！前方到站：' + stops[1].name);
+    this._applyClock();
+  }
+  trainNo() {
+    if (!this._trainNo) this._trainNo = `${this.world.line.id}${String(Math.floor(Math.random() * 900) + 100)}次`;
+    return this._trainNo;
+  }
+
+  /* ---------- 天气 / 时间 ---------- */
+  setWeather(w) {
+    this.weather = w;
+    this.rainPoints.visible = w === 'rain';
+    const d = CFG.fogDensity[w] * this.fogBoost;
+    if (this.scene.fog) { this.scene.fog.density = d; this.scene.fog.near = w === 'fog' ? 8 : 40; this.scene.fog.far = w === 'fog' ? 150 : 620; }
+    if (this.train) this.train.rainPenalty = w === 'rain' ? 0.9 : 1;
+    const btn = $('btnWeather');
+    btn.innerHTML = ({ clear: '☀️ 晴', fog: '🌫️ 雾', rain: '🌧️ 雨' })[w];
+    if (w === 'fog') btn.classList.add('active'); else btn.classList.remove('active');
+  }
+  cycleWeather() { this.setWeather({ clear: 'fog', fog: 'rain', rain: 'clear' }[this.weather]); this.toast('天气：' + ({ clear: '晴', fog: '雾', rain: '雨' })[this.weather]); }
+  cycleTime() {
+    const h = [8, 12, 17.5, 21.5, 0][Math.floor(Math.random() * 5)];
+    this.clock = h * 3600;
+    this._applyClock();
+    this.toast('时间：' + fmtClock(this.clock));
+  }
+  _applyClock() {
+    const hour = (this.clock / 3600) % 24;
+    const T = this.T;
+    const day = clamp(Math.sin(Math.PI * (hour - 6) / 12), 0, 1);          // 6-18 白天
+    const dusk = hour > 17.8 && hour < 20 ? clamp(Math.sin(Math.PI * (hour - 17.8) / 2.2), 0, 1) : 0;
+    const night = 1 - clamp(day + dusk, 0, 1);
+    const skyC = new T.Color(0x87b5d8).lerp(new T.Color(0xe8985f), dusk * 0.75).lerp(new T.Color(0x0a1424), night);
+    this.scene.background = skyC;
+    if (this.scene.fog) this.scene.fog.color = skyC;
+    this.hemi.intensity = 0.25 + day * 0.8 + dusk * 0.35;
+    this.sun.intensity = (day * 1.5 + dusk * 0.9) * 0.9;
+    const el = Math.PI * (hour - 6) / 12;
+    this.sun.position.set(Math.cos(el) * 220, Math.sin(el) * 220, 90);
+    this.sun.color.set(day > 0.4 ? 0xfff2dd : 0xffb066);
+    this.amb.intensity = 0.12 + day * 0.25;
+    const isNight = night > 0.35 || hour < 6;
+    const nightChanged = isNight !== this._isNight;
+    // 建筑窗户 / 列车夜灯 / 车站灯（仅在昼夜切换时更新材质）
+    if (nightChanged && this.world) {
+      if (this.world.buildings) {
+        this.world.buildings.material.map = isNight ? this.world.texWinNight : this.world.texWinDay;
+        this.world.buildings.material.needsUpdate = true;
+      }
+      (this.world._winMats || []).forEach(m => {
+        m.emissive.set(isNight ? 0xffdf9e : 0x000000);
+        m.emissiveIntensity = isNight ? 0.55 : 0;
+      });
+      (this.world.nightLights || []).forEach(m => m.material.color.set(isNight ? 0xfff3c0 : 0x3a4250));
+    }
+    this._isNight = isNight;
+    if (this.train && this.train.visual) {
+      (this.train.visual.nightMats || []).forEach(m => {
+        if (m.userData.night) m.material.color.set(isNight ? (m.userData.isHead ? 0xffe9b0 : 0xff3b3b) : m.userData.baseCol);
+      });
+      if (this.train.visual.opts.headlights) this.train.visual.opts.headlights.forEach(l => l.visible = isNight || this.lightsOn || this.weather !== 'clear');
+    }
+    (this.world ? this.world.aiTrains : []).forEach(tr => {
+      (tr.nightMats || []).forEach(m => {
+        if (m.userData.night) m.material.color.set(isNight ? (m.userData.isHead ? 0xffe9b0 : 0xff3b3b) : m.userData.baseCol);
+      });
+    });
+    $('btnTime').textContent = isNight ? '🌙 夜间' : (dusk > 0.05 ? '🌆 黄昏' : '☀️ 白天');
+  }
+
+  /* ---------- 相机 ---------- */
+  _updateCamera(dt) {
+    const T = this.T, tr = this.train;
+    const g = tr.visual.group;
+    const pose = this.world.getPose(tr.s, tr.track);
+    const fwd = new T.Vector3(pose.tanX, 0, pose.tanZ);
+    const noseDir = tr.track === 'B' ? -1 : 1;   // B 线（下行）车头朝向与切线相反
+    const SP = tr.SP;
+    switch (this.viewIdx) {
+      case 0: { // 司机室
+        const off = new T.Vector3(-tr.visual.totalL / 2 + 0.6, tr.visual.rideY + SP.carH / 10 * 0.55, 0);
+        const p = g.localToWorld(off.clone());
+        const look = g.localToWorld(off.clone().add(new T.Vector3(-1, 0.05, 0)));
+        this.camera.position.lerp(p, Math.min(1, dt * 14));
+        this.camera.lookAt(look);
+        this.camera.rotation.z += clamp(-tr.a * 0.02, -0.02, 0.02);
+        break;
+      }
+      case 1: { // 车头外视
+        const off = new T.Vector3(-tr.visual.totalL / 2 - 3.4, tr.visual.rideY + 1.6, 0);
+        const p = g.localToWorld(off.clone());
+        this.camera.position.lerp(p, Math.min(1, dt * 10));
+        this.camera.lookAt(p.clone().add(fwd.clone().multiplyScalar(30 * noseDir)));
+        break;
+      }
+      case 2: { // 车尾外视
+        const off = new T.Vector3(tr.visual.totalL / 2 + 3.4, tr.visual.rideY + 1.6, 0);
+        const p = g.localToWorld(off.clone());
+        this.camera.position.lerp(p, Math.min(1, dt * 10));
+        this.camera.lookAt(p.clone().add(fwd.clone().multiplyScalar(-30 * noseDir)));
+        break;
+      }
+      case 3: { // 路旁
+        const p2 = this.world.getPose(Math.min(this.world.totalLen, tr.s + 30), tr.track);
+        const side = new T.Vector3(-pose.tanZ, 0, pose.tanX);
+        const want = new T.Vector3(p2.x, p2.y + 2.4, p2.z).addScaledVector(side, 7);
+        const tp = g.position.clone().add(new T.Vector3(0, 2, 0));
+        this.camera.position.lerp(want, Math.min(1, dt * 3.5));
+        this.camera.lookAt(tp);
+        break;
+      }
+      case 4: { // 无人机
+        this.orbit.target.lerp(g.position.clone().add(new T.Vector3(0, 2.5, 0)), Math.min(1, dt * 4));
+        const { theta, phi, r } = this.orbit;
+        const cx = this.orbit.target.x + r * Math.sin(phi) * Math.cos(theta);
+        const cy = this.orbit.target.y + r * Math.cos(phi);
+        const cz = this.orbit.target.z + r * Math.sin(phi) * Math.sin(theta);
+        this.camera.position.set(cx, cy, cz);
+        this.camera.lookAt(this.orbit.target);
+        break;
+      }
+      case 5: { // 车厢内
+        const off = new T.Vector3(-tr.visual.totalL / 2 + tr.visual.carL * 1.5, tr.visual.rideY + SP.carH / 10 * 0.55, SP.carW / 10 * 0.28);
+        const p = g.localToWorld(off.clone());
+        this.camera.position.lerp(p, Math.min(1, dt * 12));
+        this.camera.lookAt(p.clone().add(fwd.clone().multiplyScalar(8 * noseDir)));
+        break;
+      }
+    }
+    $('btnCam').textContent = '🎥 ' + VIEW_NAMES[this.viewIdx];
+  }
+  cycleView() { this.viewIdx = (this.viewIdx + 1) % VIEW_NAMES.length; this.toast('视角：' + VIEW_NAMES[this.viewIdx]); }
+
+  /* ---------- 输入 ---------- */
+  _bindKeys() {
+    window.addEventListener('keydown', e => {
+      if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+      const tr = this.train;
+      if (!tr) return;
+      switch (e.code) {
+        case 'KeyW': case 'ArrowUp': AUD.init(); tr.incTraction(1); AUD.uiPing(); break;
+        case 'KeyS': case 'ArrowDown': AUD.init(); tr.incBrake(1); AUD.uiPing(); break;
+        case 'KeyA': case 'KeyD': tr.release(); break;
+        case 'KeyR': tr.resetEB(); this.toast('紧急制动缓解'); break;
+        case 'Space': e.preventDefault(); AUD.init(); tr.emergency(); break;
+        case 'KeyQ': if (!tr.doors.L) { AUD.init(); tr.openDoors('L'); this.toast('左门开启'); } break;
+        case 'KeyE': if (tr.doors.L) { tr.closeDoors(); this.toast('关门'); } break;
+        case 'KeyC': tr.setATO(!tr.ato); this.toast(tr.ato ? 'ATO 自动驾驶开启' : '切换为人工驾驶'); break;
+        case 'KeyH': if (!this.hornHeld) { AUD.init(); AUD.setHorn(true); this.hornHeld = true; } break;
+        case 'KeyL': this.lightsOn = !this.lightsOn; this._applyClock(); this.toast('车灯：' + (this.lightsOn ? '开' : '自动')); break;
+        case 'KeyV': this.cycleView(); break;
+        case 'Digit1': this.setWeather('clear'); break;
+        case 'Digit2': this.setWeather('fog'); break;
+        case 'Digit3': this.setWeather('rain'); break;
+        case 'KeyT': this.cycleTime(); break;
+        case 'KeyP': this.paused = !this.paused; this.toast(this.paused ? '已暂停 (P 继续)' : '继续运行'); break;
+        case 'KeyM': $('panelRight').classList.toggle('hidden'); $('panelLeft').classList.toggle('hidden'); break;
+        case 'KeyF': if (document.fullscreenElement) document.exitFullscreen(); else document.body.requestFullscreen().catch(() => {}); break;
+        case 'Escape': this.closeModal(); break;
+      }
+    });
+    window.addEventListener('keyup', e => {
+      if (e.code === 'KeyH' && this.hornHeld) { AUD.setHorn(false); this.hornHeld = false; }
+    });
+    // 鼠标：无人机视角旋转
+    const cv = this.renderer.domElement;
+    cv.addEventListener('pointerdown', e => { this.mouse.down = true; this.mouse.x = e.clientX; this.mouse.y = e.clientY; });
+    window.addEventListener('pointerup', () => this.mouse.down = false);
+    window.addEventListener('pointermove', e => {
+      if (!this.mouse.down || this.viewIdx !== 4) return;
+      this.orbit.theta -= (e.clientX - this.mouse.x) * 0.006;
+      this.orbit.phi = clamp(this.orbit.phi - (e.clientY - this.mouse.y) * 0.004, 0.12, 1.45);
+      this.mouse.x = e.clientX; this.mouse.y = e.clientY;
+    });
+    cv.addEventListener('wheel', e => {
+      if (this.viewIdx === 4) this.orbit.r = clamp(this.orbit.r * (1 + Math.sign(e.deltaY) * 0.08), 6, 420);
+    }, { passive: true });
+    window.addEventListener('resize', () => {
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  }
+
+  /* ---------- UI 绑定 ---------- */
+  _bindUI() {
+    $('btnLine').addEventListener('click', () => this.openModal('line'));
+    $('btnWeather').addEventListener('click', () => this.cycleWeather());
+    $('btnTime').addEventListener('click', () => this.cycleTime());
+    $('btnCam').addEventListener('click', () => this.cycleView());
+    $('btnHelp').addEventListener('click', () => this.openModal('help'));
+    $('modalClose').addEventListener('click', () => this.closeModal());
+    $('btnGo').addEventListener('click', () => { AUD.init(); this.startTask(); });
+    const DUMMY = { doors: {}, incTraction() {}, incBrake() {}, release() {}, openDoors() { return false; }, closeDoors() {}, setATO() {}, resetEB() {}, emergency() {}, eb: false, notchT: 0, notchB: 0, ato: true };
+    const tr = () => this.train || DUMMY;
+    $('btnDoorL').addEventListener('click', () => {
+      AUD.init();
+      if (tr().doors.L) { tr().closeDoors(); this.toast('关门'); }
+      else if (tr().openDoors('L')) this.toast('左门开启');
+    });
+    $('btnDoorR').addEventListener('click', () => {
+      AUD.init();
+      if (tr().doors.R) { tr().doors.R = false; tr().closeDoors(); }
+      else if (tr().openDoors('R')) this.toast('右门开启（本模拟为岛式站台，正常应开左门）');
+    });
+    $('btnATO').addEventListener('click', () => { tr().setATO(!tr().ato); this.toast(tr().ato ? 'ATO 自动驾驶开启' : '切换为人工驾驶'); AUD.uiPing(); });
+    $('btnEB').addEventListener('click', () => {
+      AUD.init();
+      if (tr().eb) { tr().resetEB(); this.toast('紧急制动缓解'); }
+      else { tr().emergency(); }
+    });
+    const hornBtn = $('btnHorn');
+    hornBtn.addEventListener('pointerdown', () => { AUD.init(); AUD.setHorn(true); });
+    ['pointerup', 'pointerleave'].forEach(ev => hornBtn.addEventListener(ev, () => AUD.setHorn(false)));
+    $('btnLight').addEventListener('click', () => { this.lightsOn = !this.lightsOn; this._applyClock(); this.toast('车灯：' + (this.lightsOn ? '开' : '自动')); });
+    $('btnWiper').addEventListener('click', () => {
+      this.wiperOn = !this.wiperOn;
+      $('btnWiper').classList.toggle('on', this.wiperOn);
+      this.toast('雨刷：' + (this.wiperOn ? '开' : '关'));
+      AUD.uiPing();
+    });
+    $('btnPause').addEventListener('click', () => { this.paused = !this.paused; this.toast(this.paused ? '已暂停' : '继续运行'); });
+    $('tTrac').addEventListener('click', () => { AUD.init(); tr().incTraction(1); AUD.uiPing(); });
+    $('tBrake').addEventListener('click', () => { AUD.init(); tr().incBrake(1); AUD.uiPing(); });
+    $('tDoor').addEventListener('click', () => {
+      AUD.init();
+      if (tr().doors.L) tr().closeDoors();
+      else if (tr().openDoors('L')) this.toast('左门开启');
+    });
+    $('tEB').addEventListener('click', () => { AUD.init(); if (tr().eb) tr().resetEB(); else tr().emergency(); });
+    // 手柄拖动
+    for (const [elId, max, kind] of [['leverTrac', 4, 'T'], ['leverBrake', 7, 'B']]) {
+      const el = $(elId);
+      el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); el.dataset.y0 = e.clientY; el.dataset.n0 = kind === 'T' ? tr().notchT : tr().notchB; AUD.init(); });
+      el.addEventListener('pointermove', e => {
+        if (el.dataset.y0 === undefined) return;
+        const dy = (parseFloat(el.dataset.y0) - e.clientY) / 16;
+        const n = clamp(Math.round(parseFloat(el.dataset.n0) + dy), 0, max);
+        if (kind === 'T') { tr().notchT = n; tr().notchB = 0; } else { tr().notchB = n; tr().notchT = 0; }
+        tr().eb = false;
+        AUD.uiPing();
+      });
+      el.addEventListener('pointerup', () => { el.dataset.y0 = undefined; });
+    }
+    // 模态外点击关闭
+    $('modal').addEventListener('click', e => { if (e.target === $('modal')) this.closeModal(); });
+    this.setWeather('clear');
+  }
+  _wireTrain() {
+    const tr = this.train;
+    tr.on('arrive', d => this._onArrive(d));
+    tr.on('depart', () => this._onDepart());
+    tr.on('tripEnd', () => this._onTripEnd());
+    tr.on('redLight', () => { this.toast('⚠️ 闯红灯！紧急制动，扣分处理'); tr.log('闯红灯！紧急制动', 'fail'); });
+    tr.on('eb', () => { this.toast('⛔ 紧急制动！'); ANN.speak(ANNOUNCE.eb, false); });
+    tr.on('atp', () => { if (performance.now() - (this._atpWarn || 0) > 2200) { this._atpWarn = performance.now(); this.toast('⚠️ 超速！ATP 已干预'); } });
+    tr.on('overrun', () => { this.toast('⚠️ 进站速度过快，注意对标停车！'); });
+    tr.on('doors', d => { $('stDoors').textContent = d.open ? '开启' : '关闭'; });
+    tr.on('mode', b => { $('btnATO').classList.toggle('on', b); });
+  }
+
+  /* ---------- 列车事件处理 ---------- */
+  _onArrive(d) {
+    const tr = this.train, st = d.st;
+    const scene = this.sceneCfg || 'normal';
+    // 客流交换
+    const alight = Math.round(tr.pax * (0.35 + Math.random() * 0.3));
+    const board = scene === 'rush' ? 260 + Math.random() * 160 : scene === 'night' ? 30 + Math.random() * 40 : 110 + Math.random() * 100;
+    tr.pax = Math.max(0, Math.round(tr.pax - alight + board));
+    // 时刻
+    const plan = tr.plan[tr.nextStopIdx];
+    if (plan) { plan.actual = this.clock; const delay = this.clock - plan.t; tr.delay = delay; }
+    tr.scores.push({ name: st.name, err: d.err, delay: tr.delay });
+    tr.stopErrLog = tr.stopErrLog || [];
+    tr.stopErrLog.push(d.err);
+    this.events.onStationArrive();
+    // 显示
+    const next = tr.stops[tr.nextStopIdx + 1];
+    $('nextStation').innerHTML = (next ? next.name : '终点站 · ' + tr.stops[tr.stops.length - 1].name) + '<small> · ' + (st.note || this.world.line.short) + '</small>';
+    $('ann').textContent = `${st.name}到了 · 请从左侧车门下车`;
+    const accTxt = Math.abs(d.err) <= 0.3 ? '精准停靠' : Math.abs(d.err) <= 1.2 ? '停靠合格' : '停靠偏差较大';
+    this.toast(`到达 ${st.name}（${accTxt} ±${Math.abs(d.err).toFixed(2)}m）`, Math.abs(d.err) > 1.2 ? 'warn' : 'ok');
+    const msg = `停站 ${st.name}：误差 ${d.err.toFixed(2)} m | 载客 ${tr.pax} 人`;
+    tr.log(msg, Math.abs(d.err) > 1.2 ? 'ev' : 'sys');
+    // 广播
+    let speak = ANNOUNCE.arrive(st.name, '左');
+    if (st.note) speak += st.note + '。';
+    ANN.speak(speak, true);
+    if (!tr.ato) this.toast('请按 Q 或点击「左门」开门');
+    this._renderTimetable();
+  }
+  _onDepart() {
+    const tr = this.train;
+    const next = tr.stops[tr.nextStopIdx];
+    $('nextStation').innerHTML = next.name + '<small> · ' + (next.note || '') + '</small>';
+    $('ann').textContent = `列车运行前方到站：${next.name}`;
+    ANN.speak(ANNOUNCE.depart(tr.stops[tr.stopIdx].name) + (next ? ANNOUNCE.next(next.name) : ''), true);
+    if (CFG.autoHorn) { AUD.setHorn(true); setTimeout(() => AUD.setHorn(false), 700); }
+    this._renderTimetable();
+  }
+  _onTripEnd() {
+    const tr = this.train;
+    const errs = tr.scores.map(s => Math.abs(s.err));
+    const acc = errs.length ? clamp(100 - errs.reduce((a, b) => a + b, 0) / errs.length * 35, 0, 100) : 100;
+    const smooth = clamp(100 - tr.jerkViol * 1.6, 0, 100);
+    const punct = clamp(100 - Math.abs(tr.delay) * 0.55, 0, 100);
+    const rule = clamp(100 - tr.ruleViol * 25 - (tr.redPassed ? 30 : 0) - tr.ebCount * 4, 0, 100);
+    const total = acc * 0.4 + smooth * 0.25 + punct * 0.2 + rule * 0.15;
+    const stars = total >= 92 ? 5 : total >= 80 ? 4 : total >= 65 ? 3 : total >= 50 ? 2 : total >= 30 ? 1 : 0;
+    const comment = ['需要多加练习', '继续努力', '基本合格', '表现良好', '优秀值乘', '金牌司机！'][stars];
+    let rows = tr.scores.map((s, i) => `<tr><td>${s.name}</td><td>${Math.abs(s.err).toFixed(2)} m</td><td>${s.delay > 0 ? '+' + Math.round(s.delay) + 's' : '正点'}</td></tr>`).join('');
+    const regenRate = tr.regenE / Math.max(1e-6, tr.energy + tr.regenE) * 100;
+    this.openModal('report', `
+      <h3>🏁 值乘结束 · 成绩单</h3>
+      <p style="text-align:center"><span class="stars">${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}</span><br>
+      <b style="font-size:20px">${Math.round(total)} 分</b> · ${comment}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0">
+        <div class="card" style="background:#0e141b">停站精度：<b>${Math.round(acc)}</b></div>
+        <div class="card" style="background:#0e141b">平稳度：<b>${Math.round(smooth)}</b></div>
+        <div class="card" style="background:#0e141b">准点率：<b>${Math.round(punct)}</b></div>
+        <div class="card" style="background:#0e141b">驾驶规范：<b>${Math.round(rule)}</b></div>
+      </div>
+      <table><tr><th>车站</th><th>停准误差</th><th>晚点</th></tr>${rows}</table>
+      <p style="margin-top:10px">总里程 <b>${(tr.dist * 10 / 1000).toFixed(1)} km</b> · 牵引能耗 <b>${tr.energy.toFixed(1)} kWh</b> · 再生制动回收 <b>${tr.regenE.toFixed(1)} kWh (${regenRate.toFixed(0)}%)</b> · 紧急制动 <b>${tr.ebCount}</b> 次 · 冲动超限 <b>${tr.jerkViol.toFixed(1)} s</b></p>
+      <button class="tbtn" style="margin-top:12px;background:var(--acc);border-color:var(--acc);color:#111;font-weight:700" onclick="APP.closeModal()">完成</button>`);
+    tr.log(`值乘结束：综合 ${Math.round(total)} 分（${comment}）`, 'sys');
+  }
+
+  /* ---------- 弹窗 ---------- */
+  openModal(kind, body) {
+    $('modal').classList.remove('hidden');
+    if (kind === 'line') {
+      $('modalTitle').textContent = '选择线路（截至 2026.08 全网运营线路）';
+      let rows = LINES.map(l => {
+        const n = l.stations.split('|').length;
+        return `<div class="linrow" data-id="${l.id}"><span class="chip" style="background:${l.color}"></span>
+          <div><div class="nm">${l.name}</div><div class="info">${l.stock} · ${l.km} km · ${n} 站 · 最高 ${l.vmax} km/h · ${l.opened} 开通</div>
+          <div class="info" style="color:var(--dim)">${l.fact}</div></div></div>`;
+      }).join('');
+      $('modalBody').innerHTML = `
+        <div class="card" style="margin-bottom:10px;background:#0e141b">
+          <b>全网概况（${NETWORK.asOf}）</b>：运营里程约 <b>${NETWORK.km} km</b>、车站 <b>${NETWORK.stations} 座</b>、<b>${NETWORK.lines} 条线路</b>；
+          ${NETWORK.dailyAvg}；${NETWORK.record}；${NETWORK.first}。<br>
+          <span style="color:var(--dim)">${NETWORK.underConstruction}</span><br>
+          <span style="color:var(--dim)">票价：${NETWORK.fare} 运营时段：${NETWORK.opsHours}</span>
+        </div>${rows}`;
+      $('modalBody').querySelectorAll('.linrow').forEach(el => el.addEventListener('click', () => {
+        this.loadLine(el.dataset.id);
+        this.closeModal();
+        this.toast('已切换至 ' + this.world.line.name);
+      }));
+    } else if (kind === 'help') {
+      $('modalTitle').textContent = '帮助与设置';
+      $('modalBody').innerHTML = `
+        <h3>🚇 关于本模拟器</h3>
+        <p>重庆轨道交通驾驶模拟器（CRT Simulator 2026），基于 <b>Three.js</b> 的纯前端 3D 驾驶模拟。
+        包含截至 <b>2026 年 8 月</b>重庆轨道交通全部运营线路（14 条 / 320+ 车站）：1、2、3、4、5、6、9、10、18 号线、
+        环线、国博线、空港线、江跳线、璧铜线。特色：李子坝列车穿楼、牛角沱/菜园坝/东水门等跨江大桥、铜元局 45‰ 大坡道、
+        雾都天气系统、ATO/ATP 信号、AI 同轨列车、中文语音广播、故障演练与值乘评分。</p>
+        <h3>🎮 操作</h3>
+        <p>牵引/制动：<kbd>W</kbd><kbd>S</kbd> 或驾驶台手柄拖动；<kbd>A</kbd> 回零；<kbd>Space</kbd> 紧急制动；<kbd>R</kbd> 缓解；
+        车门：<kbd>Q</kbd> 开 / <kbd>E</kbd> 关（岛式站台开左侧门）；<kbd>C</kbd> ATO；<kbd>H</kbd> 鸣笛；<kbd>V</kbd> 视角；
+        <kbd>1/2/3</kbd> 天气；<kbd>T</kbd> 时间；<kbd>P</kbd> 暂停；<kbd>F</kbd> 全屏。<br>
+        ATO 模式会自动对标停车与开关门；人工模式请控制在限速内、精准对标（±0.3 m 为优秀）。红灯前必须停车，闯红灯将被扣分。</p>
+        <h3>⚙️ 设置</h3>
+        <div class="kv"><span>画质</span><select id="setQuality"><option value="high">高</option><option value="mid">中</option><option value="low">低</option></select></div>
+        <div class="kv"><span>音量</span><input type="range" id="setVol" min="0" max="1" step="0.05" value="${CFG.soundVol}"></div>
+        <div class="kv"><span>雾浓度</span><input type="range" id="setFog" min="0.3" max="2.5" step="0.1" value="${this.fogBoost}"></div>
+        <div class="kv"><span>中文语音广播</span><input type="checkbox" id="setAnn" ${CFG.annVoice ? 'checked' : ''}></div>
+        <p class="hint">画质与雾浓度修改后重新选择线路生效；音量即时生效。</p>
+        <h3>📚 数据来源</h3>
+        <p class="hint">线路/车站/开通时间数据整理自公开资料（截至 2026-08）：重庆轨道交通官网、MetroMan 地铁通
+        （metroman.cn/cities/chongqing）、重庆本地宝等。3D 场景与里程为<u>示意建模</u>，不代表真实测量数据。
+        本模拟器仅供学习娱乐，不用于运营指导。</p>`;
+      $('setVol').addEventListener('input', e => AUD.setVolume(parseFloat(e.target.value)));
+      $('setFog').addEventListener('change', e => { this.fogBoost = parseFloat(e.target.value); this.setWeather(this.weather); });
+      $('setAnn').addEventListener('change', e => { CFG.annVoice = e.target.checked; ANN.setEnabled(e.target.checked); });
+      $('setQuality').addEventListener('change', e => { CFG.quality = e.target.value; this.toast('画质将在下次切换线路时生效'); });
+      $('setQuality').value = CFG.quality;
+    } else {
+      $('modalTitle').textContent = '提示';
+      $('modalBody').innerHTML = body || '';
+    }
+  }
+  closeModal() { $('modal').classList.add('hidden'); }
+  toast(msg, kind = '') {
+    const el = $('toast');
+    el.textContent = msg;
+    el.style.borderColor = kind === 'warn' ? 'var(--bad)' : kind === 'ok' ? 'var(--ok)' : 'var(--acc)';
+    el.style.color = kind === 'warn' ? '#ffb0b0' : kind === 'ok' ? '#9fe9c0' : 'var(--acc2)';
+    el.classList.add('show');
+    clearTimeout(this._toastT);
+    this._toastT = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+  showEvent(ev) {
+    const box = `<div id="eventBox"><b>🚨 ${ev.title}</b><br>${ev.desc}
+      ${ev.type === 'door' ? '<br><button class="tbtn" id="evBtn" style="margin-top:6px;border-color:var(--bad);color:#ffb0b0">重新开门</button>' : ''}</div>`;
+    $('eventSect').innerHTML = `<h4>故障处理</h4>${box}`;
+    const b = $('evBtn');
+    if (b) b.addEventListener('click', () => { this.events.resolve('door'); AUD.uiPing(); });
+    AUD.beep(980, 0.18); setTimeout(() => AUD.beep(980, 0.18), 250);
+  }
+  hideEvent() { $('eventSect').innerHTML = ''; }
+
+  /* ---------- 面板渲染 ---------- */
+  _updateLineInfo() {
+    const l = this.world.line;
+    const n = l.stations.split('|').length;
+    $('lineInfo').innerHTML = `<span class="chip" style="display:inline-block;width:12px;height:12px;border-radius:4px;background:${l.color}"></span>
+      <b>${l.name}</b>（${l.colorName}）<br>车辆：${l.stock}<br>里程 ${l.km} km · ${n} 座车站 · 最高 ${l.vmax} km/h<br>
+      开通：${l.opened}${l.loops ? ' · 闭环运行' : ''}<br><span style="color:var(--dim)">${l.fact}</span>`;
+    $('btnLine').innerHTML = `<span class="chip" style="background:${l.color}"></span> ${l.short}`;
+    $('btnLine').classList.add('active');
+    $('selStart').innerHTML = this.world.stations.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
+    const last = this.world.stations[this.world.stations.length - 1].name;
+    const first = this.world.stations[0].name;
+    $('selDir').innerHTML = this.world.line.loops
+      ? `<option value="1">内环方向</option><option value="-1">外环方向</option>`
+      : `<option value="1">上行 · 往 ${last}</option><option value="-1">下行 · 往 ${first}</option>`;
+    const selEndEl = $('selEnd');
+    selEndEl.innerHTML = this.world.stations.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
+    const resetEnd = () => {
+      selEndEl.value = this.world.line.loops ? $('selStart').value : (parseInt($('selDir').value, 10) > 0 ? this.world.stations.length - 1 : 0);
+    };
+    resetEnd();
+    $('selDir').onchange = resetEnd;
+    $('selStart').onchange = resetEnd;
+    // 速度表量程
+    this._speedoMax = Math.ceil(l.vmax / 10) * 10;
+    // 未发车时：列车停靠在起点站
+    const tr = this.train;
+    if (tr && tr.state === 'idle') {
+      const p0 = this.world.getPose(0, 'A');
+      tr.visual.group.position.set(p0.x, p0.y + tr.visual.rideY, p0.z);
+      tr.visual.group.rotation.y = Math.PI - Math.atan2(p0.tanZ, p0.tanX);
+    }
+  }
+  _populateStations() { this._updateLineInfo(); }
+  _buildLineList() { /* 按需在 openModal 中构建 */ }
+
+  /* ---------- 时刻表 ---------- */
+  _renderTimetable() {
+    const tr = this.train;
+    if (!tr.plan || !tr.plan.length) { $('timetable').innerHTML = '<tr><td colspan="3">尚未发车</td></tr>'; return; }
+    const arrived = tr.stopIdx;
+    $('timetable').innerHTML = '<tr><th style="color:var(--dim)">站</th><th>计划</th><th>实际</th></tr>' + tr.plan.map((p, i) => {
+      let cls = '';
+      if (i < arrived) cls = 'passed';
+      if (i === tr.nextStopIdx) cls = 'now';
+      const late = p.actual !== undefined && p.actual - p.t > 60;
+      return `<tr class="${cls}"><td>${p.name}</td><td>${fmtClock(p.t)}</td><td class="${late ? 'late' : ''}">${p.actual !== undefined ? fmtClock(p.actual) : '—'}</td></tr>`;
+    }).join('');
+    // 评分面板
+    const errs = tr.stopErrLog || [];
+    $('scAcc').textContent = errs.length ? (errs.reduce((a, b) => a + Math.abs(b), 0) / errs.length).toFixed(2) + ' m' : '—';
+    $('scSmooth').textContent = tr.jerkViol > 0.5 ? tr.jerkViol.toFixed(1) + ' s ⚠' : '平稳';
+    $('scPunct').textContent = tr.delay !== 0 && tr.plan.length ? (tr.delay > 0 ? '晚点 +' + Math.round(tr.delay) + 's' : '早点 ' + Math.round(-tr.delay) + 's') : '—';
+    $('scRule').textContent = tr.ruleViol + tr.redPassed + tr.ebCount === 0 ? '无违章' : `违章${tr.ruleViol} · 急制${tr.ebCount}${tr.redPassed ? ' · 闯红灯' : ''}`;
+  }
+  _updateStatus() {
+    const tr = this.train;
+    const pose = this.world.getPose(tr.s, tr.track);
+    $('stTrain').textContent = this.trainNo();
+    $('stSpeed').textContent = (tr.v * 3.6).toFixed(1) + ' km/h';
+    $('stDist').textContent = (tr.dist * 10 / 1000).toFixed(2) + ' km';
+    $('stGrade').textContent = pose.grade.toFixed(1) + ' ‰';
+    $('stTE').textContent = tr.eb ? '紧急制动' : tr.notchT > 0 ? '牵引 P' + tr.notchT : tr.notchB > 0 ? '制动 B' + tr.notchB : (tr.v > 0.5 ? '惰行' : '停稳');
+    $('stLimit').textContent = (this.train._lookaheadLimit(tr.s) * 3.6).toFixed(0) + ' km/h' + (tr.faultLimit ? '（降级）' : '');
+    $('stEnergy').textContent = tr.energy.toFixed(1) + ' kWh';
+    $('stRegen').textContent = (tr.regenE / Math.max(1e-6, tr.energy + tr.regenE) * 100).toFixed(0) + ' %';
+    $('stPax').textContent = tr.pax + ' 人';
+    const sig = tr._signalAhead();
+    $('stSignal').textContent = sig ? (sig.sig.state === 'red' ? '🔴 红灯（前方）' : sig.sig.state === 'yellow' ? '🟡 黄灯' : '🟢 绿灯') : '—';
+    $('stDoors').textContent = tr.doorState === 'closed' ? '关闭' : tr.doorState === 'open' ? '开启' : tr.doorState;
+    $('lvalTrac').textContent = 'P' + tr.notchT;
+    $('lvalBrake').textContent = tr.eb ? 'EB' : 'B' + tr.notchB;
+    $('lfillTrac').style.height = (tr.notchT / 4 * 100) + '%';
+    $('lfillBrake').style.height = (tr.eb ? 100 : tr.notchB / 7 * 100) + '%';
+    $('btnEB').classList.toggle('warnon', tr.eb);
+    $('btnATO').classList.toggle('on', tr.ato);
+    $('btnDoorL').classList.toggle('on', tr.doors.L);
+    $('msgLog').innerHTML = tr.messages.slice(0, 60).map(m => `<div class="${m.cls}">[${m.t}] ${m.txt}</div>`).join('');
+  }
+
+  /* ---------- 仪表绘制 ---------- */
+  _drawSpeedo() {
+    const cv = $('speedo'), g = cv.getContext('2d');
+    const tr = this.train;
+    const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2 + 6, R = 62;
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = '#0d1219'; g.beginPath(); g.arc(cx, cy, R + 14, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#1c2632'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, R + 13, 0, Math.PI * 2); g.stroke();
+    const max = this._speedoMax || 100;
+    const a0 = Math.PI * 0.75, sweep = Math.PI * 1.5;
+    g.strokeStyle = '#2a3542'; g.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) {
+      const a = a0 + sweep * i / 10;
+      const r1 = R, r2 = i % 5 === 0 ? R - 9 : R - 5;
+      g.beginPath(); g.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); g.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); g.stroke();
+      if (i % 5 === 0) {
+        g.fillStyle = i > 8.5 ? '#ff5c5c' : '#8fa1b3';
+        g.font = '9px Consolas,monospace'; g.textAlign = 'center';
+        const tr2 = R - 17;
+        g.fillText(String(Math.round(max * i / 10)), cx + Math.cos(a) * tr2, cy + Math.sin(a) * tr2 + 3);
+      }
+    }
+    // 红区
+    const aRed0 = a0 + sweep * 0.85;
+    g.strokeStyle = 'rgba(255,92,92,.6)'; g.lineWidth = 5;
+    g.beginPath(); g.arc(cx, cy, R - 3, aRed0, a0 + sweep); g.stroke();
+    // 指针
+    const frac = clamp(tr.v * 3.6 / max, 0, 1);
+    const a = a0 + sweep * frac;
+    g.strokeStyle = tr.eb ? '#ff5c5c' : '#ff8a00'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(cx - Math.cos(a) * 8, cy - Math.sin(a) * 8); g.lineTo(cx + Math.cos(a) * (R - 12), cy + Math.sin(a) * (R - 12)); g.stroke();
+    g.fillStyle = '#ffc24b'; g.beginPath(); g.arc(cx, cy, 5, 0, Math.PI * 2); g.fill();
+    // 数字
+    g.fillStyle = tr.eb ? '#ff5c5c' : '#e8f0f8'; g.font = 'bold 24px Consolas,monospace'; g.textAlign = 'center';
+    g.fillText((tr.v * 3.6).toFixed(1), cx, cy - 24);
+    g.fillStyle = '#8fa1b3'; g.font = '10px sans-serif';
+    g.fillText('km/h', cx, cy - 12);
+    // 指示灯
+    const lamp = (x, color, on) => {
+      g.fillStyle = on ? color : '#232c36';
+      g.beginPath(); g.arc(x, 18, 5, 0, Math.PI * 2); g.fill();
+    };
+    lamp(24, '#37d67a', tr.ato);
+    lamp(42, '#ffc94d', tr.doorState !== 'closed');
+    lamp(60, '#ff5c5c', tr.eb);
+    g.fillStyle = '#5b6a78'; g.font = '8px sans-serif'; g.textAlign = 'left';
+    g.fillText('ATO', 16, 30); g.fillText('门', 39, 30); g.fillText('EB', 57, 30);
+  }
+  _drawDMI() {
+    const cv = $('dmi'), g = cv.getContext('2d');
+    const tr = this.train;
+    const W = cv.width, H = cv.height;
+    g.fillStyle = '#0a0e14'; g.fillRect(0, 0, W, H);
+    g.strokeStyle = '#141d27'; g.strokeRect(0.5, 0.5, W - 1, H - 1);
+    g.strokeStyle = '#0e1620';
+    for (let x = 40; x < W; x += 40) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+    const lim = tr._lookaheadLimit(tr.s) * 3.6;
+    // 速度
+    g.fillStyle = tr.eb ? '#ff5c5c' : '#e8f0f8'; g.font = 'bold 34px Consolas,monospace'; g.textAlign = 'left';
+    g.fillText((tr.v * 3.6).toFixed(0), 10, 46);
+    g.fillStyle = '#5b6a78'; g.font = '12px Consolas';
+    g.fillText('km/h', 10, 62);
+    g.fillStyle = '#ffc24b'; g.font = 'bold 15px Consolas';
+    g.fillText('限速 ' + lim.toFixed(0), 10, 84);
+    // 限速曲线（前方 1.1 km）
+    const ss = tr.track === 'B' ? this.world.trackB : this.world.samples;
+    let a = 0, b = ss.length - 1;
+    while (b - a > 1) { const m = (a + b) >> 1; (ss[m].cum < tr.s) ? a = m : b = m; }
+    const plotX = 118, plotY = 8, plotW = 260, plotH = 64;
+    g.fillStyle = '#0d131b'; g.fillRect(plotX, plotY, plotW, plotH);
+    g.strokeStyle = '#1a2430'; g.strokeRect(plotX, plotY, plotW, plotH);
+    const vmax = this.world.line.vmax;
+    g.beginPath();
+    const n = 190;
+    let maxLim = 1;
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+      const idx = Math.min(ss.length - 1, a + i * 2);
+      const l = ss[idx].limit * 3.6;
+      maxLim = Math.max(maxLim, l);
+      const x = plotX + i / n * plotW;
+      const y = plotY + plotH - (l / vmax) * (plotH - 14) - 7;
+      if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      pts.push([x, y, l]);
+    }
+    g.strokeStyle = '#37d67a'; g.lineWidth = 1.5; g.stroke();
+    g.fillStyle = '#37d67a'; g.font = '9px Consolas';
+    g.fillText('前方限速曲线', plotX + 4, plotY + 10);
+    // 当前速度点
+    const yNow = plotY + plotH - (clamp(tr.v * 3.6, 0, vmax) / vmax) * (plotH - 14) - 7;
+    g.fillStyle = '#ffc24b'; g.beginPath(); g.arc(plotX, yNow, 3, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#ffc24b'; g.font = '9px Consolas';
+    g.fillText(tr.v > 0.5 ? '本车' : '停稳', plotX + 6, yNow + 3);
+    if (tr.faultLimit) {
+      const yF = plotY + plotH - (tr.faultLimit * 3.6 / vmax) * (plotH - 14) - 7;
+      g.strokeStyle = 'rgba(255,92,92,.7)'; g.setLineDash([4, 3]);
+      g.beginPath(); g.moveTo(plotX, yF); g.lineTo(plotX + plotW, yF); g.stroke(); g.setLineDash([]);
+    }
+    // 右侧信息
+    const rx = plotX + plotW + 14;
+    g.fillStyle = '#8fa1b3'; g.font = '11px sans-serif'; g.textAlign = 'left';
+    g.fillText('模式', rx, 18); g.fillStyle = tr.eb ? '#ff5c5c' : tr.ato ? '#37d67a' : '#5aa7ff';
+    g.fillText(tr.eb ? '紧急制动' : tr.ato ? 'ATO 自动驾驶' : '人工 · ATP 防护', rx + 44, 18);
+    g.fillStyle = '#8fa1b3'; g.fillText('车门', rx, 34);
+    g.fillStyle = tr.doorState === 'closed' ? '#8fa1b3' : '#ffc94d';
+    g.fillText(tr.doorState === 'closed' ? '关闭' : tr.doorState === 'open' ? '开启' : '动作中', rx + 44, 34);
+    g.fillStyle = '#8fa1b3'; g.fillText('信号', rx, 50);
+    const sig = tr._signalAhead();
+    g.fillStyle = !sig ? '#37d67a' : sig.sig.state === 'red' ? '#ff5c5c' : sig.sig.state === 'yellow' ? '#ffc94d' : '#37d67a';
+    g.fillText(sig ? (sig.sig.state === 'red' ? '红灯' : sig.sig.state === 'yellow' ? '黄灯' : '绿灯') : '绿灯', rx + 44, 50);
+    // 距下一站进度条
+    g.fillStyle = '#8fa1b3'; g.fillText('下一站', rx, 66);
+    const next = tr.stops[tr.nextStopIdx];
+    if (next) {
+      const d = Math.max(0, (tr.stopEffS[tr.nextStopIdx] !== undefined ? tr.stopEffS[tr.nextStopIdx] : next.s) - tr.effS());
+      g.fillStyle = '#141d27'; g.fillRect(rx, 72, 150, 8);
+      const frac = clamp(1 - d / 16, 0, 1);
+      g.fillStyle = '#ff8a00'; g.fillRect(rx, 72, 150 * frac, 8);
+      g.fillStyle = '#c9d4de'; g.font = '9px Consolas';
+      g.fillText(next.name + ' · ' + (d * 10).toFixed(0) + ' m', rx, 92);
+    }
+    // 时间 / 车次
+    g.fillStyle = '#5b6a78'; g.font = '11px Consolas';
+    g.fillText(fmtClock(this.clock) + ' · ' + this.trainNo(), rx + 170, 66);
+    g.fillText('坡道 ' + this.world.getPose(tr.s, tr.track).grade.toFixed(0) + '‰', rx + 170, 84);
+  }
+  _drawMinimap(force) {
+    const cv = $('minimap'), g = cv.getContext('2d');
+    const W = cv.width, H = cv.height;
+    const e = this.world.extent;
+    const pad = 16;
+    const scale = Math.min((W - pad * 2) / (e.maxX - e.minX), (H - pad * 2) / (e.maxZ - e.minZ));
+    const cx = (e.minX + e.maxX) / 2, cz = (e.minZ + e.maxZ) / 2;
+    const px = x => W / 2 + (x - cx) * scale;
+    const pz = z => H / 2 + (z - cz) * scale;
+    g.fillStyle = '#0a0f14'; g.fillRect(0, 0, W, H);
+    // 江河
+    for (const r of RIVERS) {
+      g.strokeStyle = 'rgba(64,120,150,.85)'; g.lineWidth = Math.max(1.5, r.width * scale * 0.5); g.lineCap = 'round';
+      g.beginPath();
+      r.pts.forEach((p, i) => { const x = px(p[0]), y = pz(p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+      g.stroke();
+    }
+    // 轨道
+    g.strokeStyle = this.world.line.color; g.lineWidth = 2.2; g.lineCap = 'round';
+    g.beginPath();
+    this.world.samples.forEach((p, i) => { const x = px(p.x), y = pz(p.z); i % 12 === 0 ? (i ? g.lineTo(x, y) : g.moveTo(x, y)) : (i % 12 < 11 ? g.lineTo(x, y) : 0); });
+    g.stroke();
+    // 车站
+    this.world.stationIdx.forEach((st, i) => {
+      const x = px(st.x), y = pz(st.z);
+      if (x < 0 || x > W || y < 0 || y > H) return;
+      const isCur = this.train && this.train.stops[this.train.nextStopIdx] === st;
+      const isNext = this.train && this.train.stops[this.train.nextStopIdx + 1] === st;
+      g.fillStyle = isCur ? '#ffc24b' : (isNext ? '#ff8a00' : '#fff');
+      g.beginPath(); g.arc(x, y, isCur ? 4.5 : 3, 0, Math.PI * 2); g.fill();
+      if (st.transfer) { g.strokeStyle = '#fff'; g.lineWidth = 1; g.beginPath(); g.arc(x, y, 5.5, 0, Math.PI * 2); g.stroke(); }
+      if (st.name === '朝天门') {
+        g.fillStyle = '#ffc24b'; g.font = '10px sans-serif'; g.textAlign = 'center';
+        g.fillText('★', x, y - 6);
+      }
+    });
+    // 玩家列车
+    if (this.train && this.train.state !== 'idle') {
+      const p = this.world.getPose(this.train.s, this.train.track);
+      const x = px(p.x), y = pz(p.z);
+      g.save(); g.translate(x, y); g.rotate(Math.atan2(p.tanZ, p.tanX));
+      g.fillStyle = '#ff5c5c'; g.beginPath(); g.moveTo(6, 0); g.lineTo(-4, -3.6); g.lineTo(-4, 3.6); g.closePath(); g.fill();
+      g.restore();
+    }
+    // AI 列车
+    for (const tr of this.world.aiTrains) {
+      const p = this.world.getPose(tr.s, tr.track);
+      g.fillStyle = '#7fb0d8';
+      g.fillRect(px(p.x) - 2, pz(p.z) - 2, 4, 4);
+    }
+    // 图例
+    g.fillStyle = '#5b6a78'; g.font = '9px sans-serif'; g.textAlign = 'left';
+    g.fillText(this.world.line.short + ' · 里程 ' + (this.world.totalLen * 10 / 1000).toFixed(1) + ' km · N↑', 6, 12);
+  }
+
+  /* ---------- 主循环 ---------- */
+  _loop(t) {
+    requestAnimationFrame(tt => this._loop(tt));
+    let dt = Math.min(0.05, (t - this.lastFrame) / 1000);
+    this.lastFrame = t;
+    // FPS
+    this.fpsAcc += dt; this.fpsN++;
+    if (this.fpsAcc > 0.5) { $('fps').textContent = Math.round(this.fpsN / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsN = 0; }
+    const tr = this.train;
+    if (!this.paused) {
+      if (this.tripActive && tr.state !== 'idle' && tr.state !== 'end') {
+        this.clock += dt;
+        // 物理子步
+        for (let k = 0; k < 2; k++) tr.step(dt / 2, this);
+        // 事件
+        this.events.update(dt);
+      }
+      // AI 列车（始终运行，营造运营氛围）
+      for (const ctl of this.aiCtl) ctl.update(dt, tr);
+      this._sigAcc += dt;
+      if (this._sigAcc > 0.5) { this._sigAcc = 0; updateSignals(this.world, this.world.aiTrains, tr); }
+      // 昼夜过渡
+      this._clockAcc = (this._clockAcc || 0) + dt;
+      if (this._clockAcc > 2) { this._clockAcc = 0; this._applyClock(); }
+      // 雨
+      if (this.weather === 'rain' && this.rainPoints.visible) {
+        const pos = this.rainPoints.geometry.attributes.position;
+        const cam = this.camera.position;
+        for (let i = 0; i < pos.count; i++) {
+          let y = pos.getY(i) - 34 * dt;
+          if (y < 0) { y = 80 + Math.random() * 10; pos.setX(i, cam.x + (Math.random() - 0.5) * 420); pos.setZ(i, cam.z + (Math.random() - 0.5) * 420); }
+          pos.setY(i, y);
+        }
+        pos.needsUpdate = true;
+      }
+      // 屏蔽门动画（当前停靠站）
+      const curStIdx = (tr.state === 'run' || tr.state === 'idle') ? -1 : tr.nextStopIdx;
+      const stop = curStIdx >= 0 ? tr.stops[curStIdx] : null;
+      const si = stop ? this.world.stationIdx.indexOf(stop) : -1;
+      const stObj = si >= 0 ? this.world.stationObjs[si] : null;
+      if (stObj) for (const p of stObj.doors) p.position.x = p.userData.base + p.userData.w * 0.32 * tr.psdOpenAmt;
+      // 车灯光
+      if (tr.visual.opts.headlights) {
+        tr.visual.opts.headlights.forEach(l => l.visible = this._isNight || this.lightsOn || this.weather !== 'clear');
+      }
+    }
+    // 时钟显示
+    $('clock').textContent = fmtClock(this.clock) + (this.paused ? ' ⏸' : '');
+    // 相机
+    this._updateCamera(dt);
+    // 音频
+    const braking = tr.notchB > 0 || (tr.ato && tr.atoBraking);
+    AUD.update(tr.v, tr.a, braking, tr.eb, this.weather === 'rain' ? 0.3 : 0, this.paused);
+    // 雨刷动画
+    if (this.wiperOn && tr.visual.opts.cabLever) {
+      const w = this.wiper || this._mkWiper();
+      w.rotation.x = Math.sin(performance.now() * 0.012) * 0.85;
+    }
+    // HUD（分频刷新）
+    this._hudAcc += dt;
+    if (this._hudAcc > 0.1) {
+      this._hudAcc = 0;
+      this._drawSpeedo();
+      this._updateStatus();
+    }
+    this._dmiAcc += dt;
+    if (this._dmiAcc > 0.12) { this._dmiAcc = 0; this._drawDMI(); }
+    this._mapAcc += dt;
+    if (this._mapAcc > 0.25) { this._mapAcc = 0; this._drawMinimap(); }
+    // 车厢 LED
+    const led = tr.visual.opts.interiorLED;
+    if (led) {
+      const g = led.ctx;
+      g.fillStyle = '#111'; g.fillRect(0, 0, 256, 64);
+      const next = tr.stops[tr.nextStopIdx];
+      g.fillStyle = this.world.line.color; g.fillRect(0, 0, 256, 12);
+      g.fillStyle = '#fff'; g.font = 'bold 24px "Microsoft YaHei"'; g.textAlign = 'center';
+      g.fillText(next ? '下一站 ' + next.name : '终点站', 128, 42);
+      led.mesh.material.map.needsUpdate = true;
+    }
+    // 司机室 DMI 屏幕
+    const cs = tr.visual.opts.cabScreens;
+    if (cs && cs.dmi) {
+      const g = cs.dmi.ctx, cv = cs.dmi.canvas;
+      g.fillStyle = '#0a0e14'; g.fillRect(0, 0, 256, 128);
+      g.fillStyle = '#e8f0f8'; g.font = 'bold 30px Consolas'; g.textAlign = 'left';
+      g.fillText((tr.v * 3.6).toFixed(0) + ' km/h', 10, 40);
+      g.fillStyle = '#ffc24b'; g.font = 'bold 16px Consolas';
+      g.fillText('限速 ' + (tr._lookaheadLimit(tr.s) * 3.6).toFixed(0), 10, 66);
+      g.fillStyle = tr.eb ? '#ff5c5c' : '#37d67a'; g.font = '14px Consolas';
+      g.fillText(tr.eb ? '紧急制动!' : (tr.ato ? 'ATO' : '人工'), 10, 92);
+      const next = tr.stops[tr.nextStopIdx];
+      g.fillStyle = '#8fa1b3'; g.font = '13px "Microsoft YaHei"';
+      g.fillText(next ? '下一站 ' + next.name : '', 10, 116);
+      cs.dmi.mesh.material.map.needsUpdate = true;
+      const g2 = cs.sched.ctx;
+      g2.fillStyle = '#0a0e14'; g2.fillRect(0, 0, 128, 128);
+      g2.fillStyle = '#8fa1b3'; g2.font = '11px "Microsoft YaHei"';
+      tr.plan && tr.plan.slice(Math.max(0, tr.nextStopIdx - 1), tr.nextStopIdx + 3).forEach((p, i) => {
+        g2.fillText(p.name + ' ' + fmtClock(p.t), 8, 22 + i * 22);
+      });
+      cs.sched.mesh.material.map.needsUpdate = true;
+    }
+    this.renderer.render(this.scene, this.camera);
+  }
+  _mkWiper() {
+    const tr = this.train, SP = tr.SP;
+    const g = new this.T.Group();
+    const blade = new this.T.Mesh(new this.T.BoxGeometry(0.012, 0.015, 0.13), new this.T.MeshLambertMaterial({ color: 0x11151a }));
+    g.add(blade);
+    g.position.set(-tr.visual.totalL / 2 + 0.22, tr.visual.rideY + SP.carH / 10 * 0.5, 0);
+    g.rotation.y = Math.PI / 2 - 0.25;
+    tr.visual.group.add(g);
+    this.wiper = g;
+    return g;
+  }
+}
+
+/* ---------- 启动 ---------- */
+async function boot() {
+  let T = null;
+  const cdns = ['three', 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js', 'https://unpkg.com/three@0.160.0/build/three.module.js?x=1'];
+  for (const c of cdns) {
+    try { T = await import(c); break; } catch (e) { /* 尝试下一源 */ }
+  }
+  if (!T) {
+    $('loading').innerHTML = '<p style="color:#ff5c5c;font-size:15px">无法加载 Three.js 引擎（需联网访问 CDN）。<br>请检查网络后刷新页面。</p>';
+    return;
+  }
+  window.THREE = T;
+  try {
+    new App(T).init();
+  } catch (e) {
+    console.error('INITERR', e && e.stack ? e.stack : e);
+    $('loading').innerHTML = '<p style="color:#ff5c5c;font-size:15px">初始化失败：' + (e && e.message ? e.message : e) + '<br>请使用支持 WebGL 的现代浏览器（Chrome/Edge/Firefox）。</p>';
+  }
+}
+boot();
+</script>
+</body>
+</html>
