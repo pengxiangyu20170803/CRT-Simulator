@@ -2,6 +2,8 @@
 
 # README.md
 
+[中文版](README-zh.md)
+
 ---
 
 # 🚇 Chongqing Rail Transit (CRT) Driving Simulator 2026
@@ -72,3 +74,4 @@ The main components are:
 ```plaintext
 index.html                 # Full application (HTML + CSS + JavaScript)
 README.md                  # This file
+README-zh.md               # Chinese version
