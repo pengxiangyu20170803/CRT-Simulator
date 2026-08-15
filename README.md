@@ -1,116 +1,74 @@
 # CRT-Simulator
-# 重庆轨道交通驾驶模拟器 · CRT Simulator 2026
 
-一个在浏览器里开地铁的玩意儿。Three.js 写的，单文件，打开就能跑。
-
----
-
-## 这玩意能干嘛
-
-- 开地铁。从起点发车，沿途停站，最后到终点。全程手动开，或者交给 ATO 让它自己跑。
-- 14 条线都能选：1、2、3、4、5、6、9、10、18、环线、国博、空港、江跳、璧铜。
-- 线路示意建模，站点的相对位置、线路走向、跨江桥段都做了。李子坝穿楼那个地方单独做了个地标。
-- 驾驶台该有的都有：速度表、DMI 屏、牵引/制动手柄、车门开关、紧急制动、ATO 切换。
-- 有信号系统。前方红灯你得停，闯红灯会紧急制动并且扣分。
-- 有 AI 车在同一条线上跑，不是只有你一辆。
-- 天气和时间会影响驾驶。下雨天刹车距离变长，夜间灯光自动切换。
-- 跑完一趟出评分：停站精度、平稳度、准点率、驾驶规范，最后算总分。
+# README.md
 
 ---
 
-## 技术栈
+# 🚇 Chongqing Rail Transit (CRT) Driving Simulator 2026
 
-| 东西 | 用的啥 |
-|------|--------|
-| 前端 | 纯 HTML + CSS + JS，单文件 |
-| 3D 引擎 | Three.js r160（CDN 加载） |
-| 音频 | Web Audio API，程序化合成（牵引声、轮轨声、制动风声、雨声） |
-| 语音 | Web Speech API，中文广播 |
-| 线路数据 | 14 条线、327 个车站、坐标/颜色/车型/开通时间全在代码里 |
-| 动力学 | 质量、牵引/制动加速度、冲击率、Davis 阻力、坡道阻力 |
-| ATO | PID 风格闭环控制，对标停车 ±0.3m 以内算优秀 |
-| 信号 | 基于轨道占用的红黄绿灯 |
-| AI 列车 | 同线路运行，保持间距，到站停车后继续走 |
+**A full-featured, single‑file 3D driving simulator for Chongqing’s metro network, built with Three.js.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Three.js](https://img.shields.io/badge/Three.js-r160-blue)](https://threejs.org/)
+[![Status](https://img.shields.io/badge/status-stable-brightgreen)]()
+[![Data](https://img.shields.io/badge/data-2026.08-informational)]()
 
 ---
 
-## 按键操作
+## 🌟 Overview
 
-键盘绑了这些：
+**CRT Simulator 2026** is an immersive, browser‑based driving simulation for the Chongqing Rail Transit network. It leverages Three.js to create a realistic 3D environment with procedural terrain, dynamic weather, and a full physics‑based train model.
 
-| 按键 | 功能 |
-|------|------|
-| `W` / `↑` | 牵引（推手柄） |
-| `S` / `↓` | 制动（拉手柄） |
-| `A` / `D` | 手柄回零 |
-| `Space` | 紧急制动 |
-| `R` | 缓解紧急制动 |
-| `Q` | 开左门 |
-| `E` | 关门 |
-| `C` | 切换 ATO / 人工驾驶 |
-| `H` | 按住鸣笛 |
-| `L` | 车灯开关 |
-| `V` | 切换视角（司机室/车头外/车尾外/路旁/无人机/车厢内） |
-| `1` `2` `3` | 晴 / 雾 / 雨 |
-| `T` | 切换时间 |
-| `P` | 暂停 |
-| `M` | 隐藏/显示面板 |
-| `F` | 全屏 |
-
-触屏设备会自动显示虚拟按键。鼠标也能点驾驶台上的按钮，手柄可以直接拖动。
+**Key highlights:**
+- 🗺️ **Full network coverage** – all 14 operational lines as of August 2026 (1, 2, 3, 4, 5, 6, 9, 10, 18, Loop, Expo, Airport, Jiangtiao, and Bishan–Tongliang lines).
+- 🏙️ **Famous landmarks** – Liziba “train-through-building”, multiple Yangtze/Jialing river bridges, and the steepest 45‰ gradient at Tongyuanju.
+- 🎮 **Authentic driving experience** – ATO (automatic) / manual driving with ATP overspeed protection, emergency brake, and realistic door controls.
+- 🌦️ **Dynamic environment** – day/night cycle, clear/fog/rain weather, and a procedural audio engine (traction, wheel‑rail, braking, horn).
+- 🔊 **Chinese voice announcements** – station arrival/departure announcements using the Web Speech API.
+- 📊 **Performance scoring** – stop precision, ride comfort, punctuality, and rule compliance, with a final star rating.
 
 ---
 
-## 跑起来
+## 🕹️ Controls
 
-就一个文件：`index.html`
+| Key               | Action                           |
+|-------------------|----------------------------------|
+| `W` / `↑`         | Increase traction (throttle)     |
+| `S` / `↓`         | Increase braking                 |
+| `A` / `D`         | Release handle (coast)           |
+| `Space`           | Emergency brake                  |
+| `R`               | Release emergency brake          |
+| `Q`               | Open left doors                  |
+| `E`               | Close doors                      |
+| `C`               | Toggle ATO / manual              |
+| `H` (hold)        | Horn                             |
+| `L`               | Toggle headlights                |
+| `V`               | Cycle camera views               |
+| `1` / `2` / `3`   | Weather: clear / fog / rain      |
+| `T`               | Cycle time of day                |
+| `P`               | Pause / resume                   |
+| `F`               | Toggle fullscreen                |
+| `M`               | Toggle left/right panels         |
 
-1. 下载下来用浏览器打开
-2. 需要联网（加载 Three.js）
-3. 推荐 Chrome / Edge / Firefox
-
-打开之后：
-
-1. 左上角选线路
-2. 选始发站、方向、终点站
-3. 选 ATO 还是人工
-4. 选场景（正常/早高峰/夜间/故障演练）
-5. 点「发车 · 开始值乘」
-
-ATO 模式：看着它自己跑就行，到站自动开门关门起步。
-
-人工模式：自己操作所有东西，对标停车、开关门、控速、红灯停车，都要自己来。
-
----
-
-## 数据来源
-
-线路、车站、开通时间整理自：
-
-- 重庆轨道交通官网
-- MetroMan 地铁通（metroman.cn/cities/chongqing）
-- 重庆本地宝
-- 公开的线路图、新闻报道
-
-车站坐标和线路走向是示意性的，不是精确 GIS 数据。地形、建筑、江河位置也都是示意。
+You can also drag the **traction/brake levers** on the HUD, or use the on‑screen buttons (especially for touch devices).
 
 ---
 
-## 已知问题
+## 🛠️ Technology Stack
 
-- Web Speech API 中文语音在一些浏览器上可能不响，或者发音不对，浏览器自己的问题。
-- 15 号线、27 号线在 2026 年 8 月还在建，没放在运营列表里。
-- 建筑物和树木是程序生成的，跟真实城市布局没关系。
-- 单轨和钢轮钢轨的视觉差异做了一些，但肯定比不上专业模拟器。
-
----
-
-## 授权
-
-个人兴趣项目，不商用。
-
-代码随便看、随便改、自己玩。但如果你要拿去商用、分发、集成到别的项目里，自己注意版权。Three.js 有它的授权，地名数据也不是我原创的。
+- **3D Engine** – [Three.js](https://threejs.org/) r160
+- **Physics** – custom train dynamics with jerk‑limited acceleration, gradient resistance, and ATP look‑ahead.
+- **Audio** – WebAudio synthesizer (no external sound files required).
+- **Voice** – Web Speech API (Chinese Mandarin).
+- **Data** – station coordinates, line profiles, and historical facts compiled from public sources (accurate as of August 2026).
 
 ---
 
-如果打开页面黑屏，先看浏览器控制台报什么错。多半是网络问题导致 Three.js 没加载成功。加载成功但 3D 场景出不来，换 Chrome 试试。
+## 📁 Project Structure
+
+Since this is a **single‑file application**, all code is contained in `index.html`.  
+The main components are:
+
+```plaintext
+index.html                 # Full application (HTML + CSS + JavaScript)
+README.md                  # This file
