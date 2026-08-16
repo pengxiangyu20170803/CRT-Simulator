@@ -2,7 +2,7 @@
 
 # README.md
 
-[中文版](README-zh.md)
+[中文版](README.zh.md)
 
 ---
 
