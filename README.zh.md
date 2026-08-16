@@ -1,7 +1,7 @@
 #重庆轨道交通驾驶模拟器
 
 ```markdown
-# README-zh.md
+# README.zh.md
 
 [English Version](README.md)
 
